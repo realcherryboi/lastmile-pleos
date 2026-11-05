@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/background">
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical"
+        android:paddingStart="@dimen/page_padding" android:paddingEnd="@dimen/page_padding" android:paddingTop="28dp" android:paddingBottom="@dimen/page_padding">
+
+        <!-- Header -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+            <TextView android:id="@+id/appTitle" style="@style/Text.Title" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/app_name"/>
+            <TextView android:id="@+id/stateChip" style="@style/Chip" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="24dp" android:text="@string/state_idle"/>
+            <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
+            <ImageButton android:id="@+id/settingsButton" style="@style/Button.Icon" android:src="@drawable/ic_settings" android:contentDescription="@string/settings"/>
+        </LinearLayout>
+
+        <FrameLayout android:id="@+id/pages" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="24dp">
+            <include android:id="@+id/pageIdle" layout="@layout/page_idle"/>
+            <include android:id="@+id/pageDrive" layout="@layout/page_drive" android:visibility="gone"/>
+            <include android:id="@+id/pageArrived" layout="@layout/page_arrived" android:visibility="gone"/>
+        </FrameLayout>
+    </LinearLayout>
+
+    <!-- Voice overlay -->
+    <include android:id="@+id/voiceSheet" layout="@layout/sheet_voice" android:visibility="gone"/>
+</FrameLayout>

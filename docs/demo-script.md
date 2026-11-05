@@ -1,0 +1,25 @@
+# 90초 데모 시나리오 (에뮬레이터 v2.1.0, SDK 모드)
+
+> 실측 기준 (docs/emulator-setup.md §9). 비상등·차속은 SDK로 못 읽으므로 쓰지 않는다. 재현 스크립트: `scripts/demo.sh`
+
+| 시간 | 장면 | 조작 | 기대 출력 |
+|---|---|---|---|
+| 0:00–0:15 | 앱 실행, 목적지 "한식당 소담" 설정 | 앱 [목적지 설정] 터치 1회 (주행 전) | 내장 내비가 경로 안내 시작(10분·2.6km), 앱 ARMED→BRIEF_3KM, 🔊 3km 브리핑 |
+| 0:15–0:35 | 접근 | `adb emu geo fix` 1013m → 518m | 🔊 "1킬로 남았어요…" (BRIEF_1KM) |
+| 0:35–0:50 | 운전자 질문 "정문 앞에 세워도 돼?" | 텍스트 입력(STT 대체) 또는 마이크 | 🔊 "정문 앞은 단속 구역이에요…" |
+| 0:50–1:05 | 300m 진입, 브레이크 유지 | `geo fix` 160m, Virtual Console Brake Pedal 100% 3초 | 🔊 300m 보강 안내 → STOPPING "정차 금지 구역이에요…" |
+| 1:05–1:20 | 마중 모드 ON (사전 설정) | 스위치 | 메시지 미리보기 "5분 후 도착…" |
+| 1:20–1:30 | 도착 | `geo fix` 0m(지오펜스 진입) + Virtual Console Gear **P** | ✉ "도착했어요" + 🔊 "도착 알림 보냈어요. 여기는 10분 300원이에요." |
+
+## 녹화 (완료본: docs/submission/video/lastmile_demo_1080p.mp4, 73초)
+```bash
+adb exec-out screenrecord --output-format=h264 - > ~/Desktop/lastmile_demo.h264
+```
+```bash
+ffmpeg -framerate 60 -i ~/Desktop/lastmile_demo.h264 -c copy ~/Desktop/lastmile_demo.mp4
+```
+
+## 남은 확인
+- [ ] STT 실제 마이크 인식 (Extended Controls > Microphone)
+- [ ] 마중 메시지 SMS 인텐트 수신 앱 존재 여부 (없으면 미리보기만)
+- [ ] 실차/실 내비에서 `onDestinationArrived` 수신 (에뮬레이터는 위치 고정이라 불가)

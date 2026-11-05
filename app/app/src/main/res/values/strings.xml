@@ -1,0 +1,35 @@
+<resources>
+    <string name="app_name">라스트마일</string>
+    <string name="notif_channel">라스트마일 주행 보조</string>
+    <string name="notif_title">라스트마일 실행 중</string>
+    <string name="idle_title">어디로 데리러 가세요?</string>
+    <string name="idle_subtitle">출발 전에 목적지를 고르면, 도착 3km 전부터 음성으로 안내해요</string>
+    <string name="meeting_mode">마중 알림</string>
+    <string name="meeting_off">기다리는 사람에게 도착 소식을 자동으로 보내요</string>
+    <string name="meeting_on_fmt">%s에게 5분 전·도착 시 자동 전송</string>
+    <string name="meeting_no_recipient">받는 사람을 등록하면 켤 수 있어요</string>
+    <string name="start_guidance">안내 시작</string>
+    <string name="ask_voice">물어보기</string>
+    <string name="end_guidance">안내 종료</string>
+    <string name="done">완료</string>
+    <string name="settings">설정</string>
+    <string name="recipient">받는 사람</string>
+    <string name="recipient_hint">휴대폰 번호</string>
+    <string name="recipient_name_hint">이름 (예: 엄마)</string>
+    <string name="arrived_title">도착했어요</string>
+    <string name="stopping_title">잠시 정차</string>
+    <string name="listening">듣고 있어요</string>
+    <string name="listening_hint">예) 주차 어디? · 정문 앞에 세워도 돼?</string>
+    <string name="state_idle">출발 전</string>
+    <string name="state_armed">안내 대기</string>
+    <string name="state_driving">안내 중</string>
+    <string name="state_stopping">정차 중</string>
+    <string name="state_arrived">도착</string>
+    <string name="parking_curb">정차</string>
+    <string name="parking_valet">발렛</string>
+    <string name="parking_lot">주차</string>
+    <string name="remain_fmt_km">%.1f km</string>
+    <string name="remain_fmt_m">%d m</string>
+    <string name="eta_fmt">약 %d분</string>
+    <string name="version_fmt">버전 %s</string>
+</resources>

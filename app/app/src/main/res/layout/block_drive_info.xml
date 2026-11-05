@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:background="@drawable/bg_card" android:padding="@dimen/card_padding">
+        <include android:id="@+id/factCurb" layout="@layout/row_fact"/>
+        <View android:layout_width="match_parent" android:layout_height="2dp" android:background="@color/outline" android:layout_marginTop="20dp" android:layout_marginBottom="20dp"/>
+        <include android:id="@+id/factValet" layout="@layout/row_fact"/>
+        <View android:layout_width="match_parent" android:layout_height="2dp" android:background="@color/outline" android:layout_marginTop="20dp" android:layout_marginBottom="20dp"/>
+        <include android:id="@+id/factParking" layout="@layout/row_fact"/>
+    </LinearLayout>
+    <LinearLayout android:id="@+id/meetingStatusCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical"
+        android:background="@drawable/bg_card" android:padding="@dimen/card_padding" android:layout_marginTop="@dimen/gutter">
+        <ImageView android:id="@+id/meetingStatusIcon" android:layout_width="48dp" android:layout_height="48dp" android:src="@drawable/ic_message" android:tint="@color/text_primary"/>
+        <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginStart="24dp">
+            <TextView android:id="@+id/meetingStatusTitle" style="@style/Text.Body" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textStyle="bold" android:text="@string/meeting_mode"/>
+            <TextView android:id="@+id/meetingStatusText" style="@style/Text.Label" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:maxLines="2" android:ellipsize="end"/>
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

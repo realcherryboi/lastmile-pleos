@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="@dimen/page_padding">
+    <TextView style="@style/Text.Headline" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/settings"/>
+    <TextView style="@style/Text.Body" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="32dp" android:textStyle="bold" android:text="@string/recipient"/>
+    <TextView style="@style/Text.Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="마중 알림을 받을 사람이에요. 정차 중에만 바꿀 수 있어요."/>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="20dp">
+        <EditText android:id="@+id/recipientName" style="@style/Field" android:layout_width="0dp" android:layout_weight="1" android:layout_height="88dp" android:hint="@string/recipient_name_hint" android:inputType="textPersonName" android:importantForAutofill="no"/>
+        <EditText android:id="@+id/recipientPhone" style="@style/Field" android:layout_width="0dp" android:layout_weight="2" android:layout_height="88dp" android:layout_marginStart="16dp" android:hint="@string/recipient_hint" android:inputType="phone" android:importantForAutofill="no"/>
+    </LinearLayout>
+    <TextView android:id="@+id/restrictedNote" style="@style/Text.Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:textColor="@color/negative" android:text="주행 중에는 입력할 수 없어요" android:visibility="gone"/>
+    <Button android:id="@+id/saveButton" style="@style/Button.Primary" android:layout_width="match_parent" android:layout_height="@dimen/button_height" android:layout_marginTop="32dp" android:text="저장"/>
+    <TextView android:id="@+id/versionText" style="@style/Text.Caption" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="28dp" android:gravity="center" android:padding="12dp"/>
+</LinearLayout>

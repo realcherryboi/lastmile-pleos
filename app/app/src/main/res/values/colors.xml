@@ -1,0 +1,43 @@
+<resources>
+    <!-- Pleos Connect basic scale (Light) -->
+    <color name="basic_100">#131417</color>
+    <color name="basic_200">#44464E</color>
+    <color name="basic_300">#686A72</color>
+    <color name="basic_400">#A4A8AE</color>
+    <color name="basic_500">#C7C9CE</color>
+    <color name="basic_600">#E0E1E6</color>
+    <color name="basic_700">#EDEEF2</color>
+    <color name="basic_800">#F7F8FA</color>
+    <color name="basic_900">#FFFFFF</color>
+    <!-- Informative -->
+    <color name="informative_active">#00E074</color>
+    <color name="informative_positive">#0082FF</color>
+    <color name="informative_negative">#FF4C28</color>
+    <color name="informative_warning">#FFB020</color>
+
+    <!-- Semantic (Light) -->
+    <color name="background">@color/basic_800</color>
+    <color name="surface">@color/basic_900</color>
+    <color name="surface_variant">@color/basic_700</color>
+    <color name="outline">@color/basic_600</color>
+    <color name="text_primary">@color/basic_100</color>
+    <color name="text_secondary">@color/basic_300</color>
+    <color name="text_tertiary">@color/basic_400</color>
+    <color name="text_on_primary">@color/basic_900</color>
+    <color name="button_primary">@color/basic_100</color>
+    <color name="button_primary_pressed">@color/basic_200</color>
+    <color name="button_secondary">@color/basic_700</color>
+    <color name="button_secondary_pressed">@color/basic_600</color>
+    <color name="button_disabled">@color/basic_500</color>
+    <color name="accent">@color/informative_positive</color>
+    <color name="accent_container">#1A0082FF</color>
+    <color name="success">#00B85E</color>
+    <color name="success_container">#1A00E074</color>
+    <color name="warning">#E08A00</color>
+    <color name="warning_container">#26FFB020</color>
+    <color name="negative">@color/informative_negative</color>
+    <color name="bg">@color/background</color>
+    <color name="card">@color/surface</color>
+    <color name="text">@color/text_primary</color>
+    <color name="muted">@color/text_secondary</color>
+</resources>

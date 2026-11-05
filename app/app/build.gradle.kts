@@ -1,0 +1,65 @@
+import java.util.Properties
+
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+val keystoreProps = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
+android {
+    namespace = "kr.lastmile.app"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "kr.lastmile.app"
+        minSdk = 28
+        targetSdk = 35
+        versionCode = 1
+        versionName = "0.1.0"
+    }
+    signingConfigs {
+        create("release") {
+            if (keystoreProps.isNotEmpty()) {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+                enableV1Signing = true; enableV2Signing = true; enableV3Signing = true
+            }
+        }
+    }
+    buildFeatures { viewBinding = true; buildConfig = true }
+    flavorDimensions += "source"
+    productFlavors {
+        create("mock") { dimension = "source"; applicationIdSuffix = ".mock"; buildConfigField("boolean", "USE_MOCK", "true") }
+        create("sdk") { dimension = "source"; buildConfigField("boolean", "USE_MOCK", "false") }
+    }
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    useLibrary("android.car")
+    compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+    kotlinOptions { jvmTarget = "17" }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("com.google.android.material:material:1.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+
+    // Pleos Connect SDK (2026-10-19 release)
+    implementation("ai.pleos.playground:Vehicle:2.3.2")
+    implementation("ai.pleos.playground:NaviHelper:3.0.5")
+    implementation("ai.pleos.playground:TextToSpeech:3.3.1")
+    implementation("ai.pleos.playground:SpeechToText:3.3.1")
+    implementation("ai.pleos.playground:FusedLocation:1.1.3")
+}

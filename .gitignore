@@ -1,0 +1,20 @@
+# 내부 작업 문서·개인정보 포함 파일 (제출 저장소에는 올리지 않음)
+HANDOFF.md
+docs/proposal.md
+docs/form-structure.md
+docs/form-source/
+docs/submission/
+docs/sources.md
+# Android
+app/.gradle/
+app/build/
+app/*/build/
+app/local.properties
+app/.idea/
+app/*.iml
+app/keystore/
+app/keystore.properties
+# OS
+.DS_Store
+app/.kotlin/
+scripts/fill_form.py

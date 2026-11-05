@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content">
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="@dimen/page_padding">
+    <TextView style="@style/Text.Title" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="개발자 패널"/>
+    <TextView android:id="@+id/devSources" style="@style/Text.Label" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp"/>
+    <LinearLayout android:id="@+id/devMockPanel" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginTop="20dp" android:visibility="gone">
+        <TextView android:id="@+id/distanceLabel" style="@style/Text.Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="남은 거리 5000m"/>
+        <SeekBar android:id="@+id/distanceSeek" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="5000" android:progress="5000"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <Button android:id="@+id/btn3km" style="@style/Button.Secondary" android:layout_width="0dp" android:layout_weight="1" android:layout_height="72dp" android:text="3km"/>
+            <Button android:id="@+id/btn1km" style="@style/Button.Secondary" android:layout_width="0dp" android:layout_weight="1" android:layout_height="72dp" android:layout_marginStart="8dp" android:text="1km"/>
+            <Button android:id="@+id/btn300m" style="@style/Button.Secondary" android:layout_width="0dp" android:layout_weight="1" android:layout_height="72dp" android:layout_marginStart="8dp" android:text="300m"/>
+            <Button android:id="@+id/btnNaviArrived" style="@style/Button.Secondary" android:layout_width="0dp" android:layout_weight="1" android:layout_height="72dp" android:layout_marginStart="8dp" android:text="내비 도착"/>
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="8dp">
+            <Button android:id="@+id/btnBrake" style="@style/Button.Secondary" android:layout_width="0dp" android:layout_weight="1" android:layout_height="72dp" android:text="브레이크"/>
+            <Button android:id="@+id/btnGearD" style="@style/Button.Secondary" android:layout_width="0dp" android:layout_weight="1" android:layout_height="72dp" android:layout_marginStart="8dp" android:text="기어 D"/>
+            <Button android:id="@+id/btnGearP" style="@style/Button.Secondary" android:layout_width="0dp" android:layout_weight="1" android:layout_height="72dp" android:layout_marginStart="8dp" android:text="기어 P"/>
+            <Button android:id="@+id/btnGeofence" style="@style/Button.Secondary" android:layout_width="0dp" android:layout_weight="1" android:layout_height="72dp" android:layout_marginStart="8dp" android:text="반경 진입"/>
+        </LinearLayout>
+    </LinearLayout>
+    <TextView android:id="@+id/devLog" style="@style/Text.Caption" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:fontFamily="monospace" android:maxLines="30"/>
+</LinearLayout>
+</ScrollView>

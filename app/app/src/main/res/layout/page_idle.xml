@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:baselineAligned="false">
+    <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="3" android:orientation="vertical">
+        <TextView style="@style/Text.Headline" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/idle_title"/>
+        <TextView style="@style/Text.Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="@string/idle_subtitle"/>
+        <GridLayout android:id="@+id/tileGrid" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="32dp" android:columnCount="@integer/tile_columns" android:useDefaultMargins="false"/>
+    </LinearLayout>
+    <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="2" android:orientation="vertical" android:layout_marginStart="@dimen/gutter">
+        <include android:id="@+id/meetingCard" layout="@layout/card_meeting"/>
+        <Space android:layout_width="1dp" android:layout_height="0dp" android:layout_weight="1"/>
+        <Button android:id="@+id/startButton" style="@style/Button.Primary" android:layout_width="match_parent" android:layout_height="@dimen/button_height" android:text="@string/start_guidance" android:enabled="false"/>
+    </LinearLayout>
+</LinearLayout>
