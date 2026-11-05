@@ -3,6 +3,7 @@ package kr.lastmile.app.source
 import kr.lastmile.app.domain.GearPosition
 import kr.lastmile.app.domain.TurnSide
 import kr.lastmile.app.domain.Destination
+import kr.lastmile.app.domain.NaviChargingStop
 
 /** 내비 신호. 실구현: NaviHelper SDK. 데모: MockNaviSource. */
 interface NaviSource {
@@ -11,6 +12,12 @@ interface NaviSource {
         fun onRemainDistance(meters: Int, remainSec: Int)
         fun onArrived()
         fun onStatus(text: String)
+        /** 내비가 아는 충전 사업자 이름 목록 (NaviHelper.getChargerOperatorInfo). 에뮬레이터는 전체 카탈로그를 준다 — 선호 설정이 아니라 이름 정규화용 */
+        fun onChargerOperators(names: List<String>) {}
+        /** 가상 경로(requestTrip) 응답: 그 지점까지 거리·시간·도착 예상 잔량 */
+        fun onTripEstimate(lat: Double, lng: Double, distanceM: Int, etaSec: Int, socAtDest: Int) {}
+        /** 내비 EV 경로 플래너가 잡은 충전 경유지 (DrivingInfo) */
+        fun onNaviChargingStops(stops: List<NaviChargingStop>) {}
     }
     fun start(listener: Listener)
     fun stop()
@@ -18,6 +25,12 @@ interface NaviSource {
     fun requestRoute(destination: Destination) {}
     /** 안내 종료: 내비 경로도 취소 */
     fun cancelRoute() {}
+    /** 충전 사업자 목록 조회 → onChargerOperators */
+    fun requestChargerOperators() {}
+    /** 후보 지점까지 가상 경로 → onTripEstimate (현재 경로는 바꾸지 않음) */
+    fun requestTripEstimate(name: String, lat: Double, lng: Double) {}
+    /** 추천 충전소를 현재 경로의 경유지로 추가 */
+    fun addWaypoint(name: String, lat: Double, lng: Double) {}
 }
 
 /** 차량 신호. 실구현: Vehicle SDK(Gear·Safety.Telltales·TurnSignal·Door·EvBattery). */

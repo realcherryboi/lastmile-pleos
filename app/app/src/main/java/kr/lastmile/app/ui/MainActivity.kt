@@ -37,7 +37,11 @@ import kr.lastmile.app.LastMileApp
 import kr.lastmile.app.R
 import kr.lastmile.app.databinding.ActivityMainBinding
 import kr.lastmile.app.domain.Briefing
+import kr.lastmile.app.domain.ChargerCandidate
+import kr.lastmile.app.domain.ChargerPlanner
 import kr.lastmile.app.domain.Destination
+import kr.lastmile.app.domain.TripPurpose
+import kr.lastmile.app.source.PublicChargerSource
 import kr.lastmile.app.domain.GearPosition
 import kr.lastmile.app.domain.TripEngine
 import kr.lastmile.app.domain.TripState
@@ -78,6 +82,7 @@ class MainActivity : AppCompatActivity() {
     private var voiceShown = false
     private var curbSnapAt = 0L
     private val enriched = HashSet<String>()      // 보강을 시도한 내비 목적지 id
+    private val chargerSeeded = HashSet<String>(); private val chargerDone = HashSet<String>()
     private var enrichTries = 0
     private lateinit var remainNum: SpringValue      // 남은 거리 숫자: 값이 바뀌면 카운팅(스프링)으로 이어진다
     private lateinit var countdownNum: SpringValue
@@ -100,6 +105,7 @@ class MainActivity : AppCompatActivity() {
         buildRows()
         bindIdle(); bindDrive(); bindArrived(); bindVoice()
         zoneMap.onIdle = { tryEnrich(engine.ui.value) }
+        PublicChargerSource.codeLookup = { lat, lng -> OsmEnricher.sggCode(applicationContext, lat, lng) }
         for (slot in mapSlots()) { val rc = slot.findViewById<View>(R.id.recenterButton); rc.setOnClickListener { zoneMap.recenter() }; Pressable.attach(rc) }
         b.settingsButton.setOnClickListener { showSettings() }
         Pressable.attach(b.settingsButton)
@@ -185,6 +191,7 @@ class MainActivity : AppCompatActivity() {
     private fun bindIdle() {
         val root = b.pageIdle.root
         val start = root.findViewById<Button>(R.id.startButton)
+        bindPurpose(root); bindPurpose(b.pageDrive.root)
         start.setOnClickListener { engine.startGuidance() }
         Pressable.attach(start)
         val search = root.findViewById<EditText>(R.id.searchField)
@@ -237,7 +244,44 @@ class MainActivity : AppCompatActivity() {
     }
     private fun setFact(root: View, id: Int, value: String) { root.findViewById<View>(id).findViewById<TextView>(R.id.factValue).text = value }
 
-    private fun curbText(d: Destination) = when { !d.rulesKnown -> "정문 앞 5분 이내 · 일반 도로 기준"; d.curbsideAllowed -> "정문 앞 ${d.curbsideLimitMin}분까지"; else -> "정문 앞 정차 금지" }
+    /** "머무는 동안 충전" 카드: 배터리가 HINT_SOC 이하이고 추천 충전소가 있을 때만. 내비가 이미 충전 경유지를 잡았으면 그 사실을 먼저 보여 준다. */
+    private fun renderChargerCard(dr: View, s: UiState, d: Destination) {
+        val card = dr.findViewById<View>(R.id.chargerCard)
+        val c = d.charger
+        val naviStop = s.naviChargingStops.firstOrNull()
+        val show = s.evSoc in 0..ChargerPlanner.HINT_SOC && (c != null || naviStop != null)
+        Motion.setVisible(card, show, fromY = 12 * dp, fromScale = 0.97f)
+        if (!show) return
+        val title = dr.findViewById<TextView>(R.id.chargerTitle); val text = dr.findViewById<TextView>(R.id.chargerText); val btn = dr.findViewById<Button>(R.id.chargerButton)
+        if (c != null) {
+            title.text = if (s.evSoc <= Briefing.LOW_SOC) "도착해서 충전" else "머무는 동안 충전"
+            text.text = "${c.name} · ${c.summary()}" + (naviStop?.let { "\n내비 충전 경유지: ${it.name} ${it.maxKw} kW" } ?: "")
+            btn.text = if (s.chargerWaypointAdded) getString(R.string.charger_added) else getString(R.string.charger_add_waypoint)
+            btn.isEnabled = !s.chargerWaypointAdded
+            btn.setOnClickListener { engine.addChargerWaypoint() }
+        } else {
+            title.text = "내비 충전 경유지 · ${naviStop!!.name}"
+            text.text = listOfNotNull(naviStop.maxKw.takeIf { it > 0 }?.let { "$it kW" }, naviStop.chargerCount.takeIf { it > 0 }?.let { "충전기 ${it}대" }, "${naviStop.startSoc}% → ${naviStop.endSoc}% · ${naviStop.chargeMin}분").joinToString(" · ")
+            btn.isEnabled = false; btn.text = getString(R.string.charger_navi_planned)
+        }
+    }
+
+    /** 목적 칩 3개: 선택된 것만 강조. 누르면 엔진에 반영. */
+    private fun bindPurpose(root: View) {
+        for ((id, p) in listOf(R.id.purposeStop to TripPurpose.STOP, R.id.purposePark to TripPurpose.PARK, R.id.purposeVia to TripPurpose.VIA)) {
+            val v = root.findViewById<View>(id) ?: continue
+            Pressable.attach(v); v.setOnClickListener { engine.setPurpose(p) }
+        }
+    }
+    private fun renderPurpose(root: View, s: UiState) {
+        for ((id, p) in listOf(R.id.purposeStop to TripPurpose.STOP, R.id.purposePark to TripPurpose.PARK, R.id.purposeVia to TripPurpose.VIA)) {
+            val v = root.findViewById<TextView>(id) ?: continue
+            val on = s.purpose == p
+            if (v.tag != on) { v.tag = on; v.setBackgroundResource(if (on) R.drawable.bg_chip_accent else R.drawable.bg_chip); v.setTextColor(getColor(if (on) R.color.accent else R.color.text_primary)); if (on) Motion.pop(v, 0.94f) }
+        }
+    }
+
+    private fun curbText(d: Destination) = when { !d.rulesKnown -> "정문 앞 5분 이내 · 일반 도로 기준"; d.curbsideAllowed -> "정문 앞 ${d.curbsideLimitMin}분까지"; else -> "정문 앞 정차 금지" } + if (d.curb.known) " · ${d.curb.label}" else ""
     private fun parkingText(d: Destination) = when { d.parkingName.isBlank() -> if (d.isGeneric) "주변 주차장 찾는 중" else "정보 없음"; d.parkingFee.isNotBlank() -> "${d.parkingName} · ${d.parkingFee}"; d.parkingDistanceM >= 0 -> "${d.parkingName} · ${d.parkingDistanceM} m"; else -> d.parkingName }
     private fun fmtMeters(m: Int) = if (m >= 1000) getString(R.string.remain_fmt_km, m / 1000.0) else getString(R.string.remain_fmt_m, m)
 
@@ -246,11 +290,11 @@ class MainActivity : AppCompatActivity() {
     private fun nextOf(s: UiState, d: Destination): Next {
         val m = s.remainMeters; val min = maxOf(1, s.remainSec / 60)
         return when (s.state) {
-            TripState.ARMED -> Next(R.drawable.ic_bell, "3 km 지점 · 도착 전 브리핑", Briefing.at3km(d, if (s.remainSec > 0) min else 10), if (m > 3000) m - 3000 else -1)
-            TripState.BRIEF_3KM -> Next(R.drawable.ic_flag, "1 km 지점 · 정차 안내", Briefing.at1km(d), if (m > 1000) m - 1000 else -1)
-            TripState.BRIEF_1KM -> Next(R.drawable.ic_parking, "300 m 지점 · 진입 안내", Briefing.at300m(d), if (m > 300) m - 300 else -1)
+            TripState.ARMED -> Next(R.drawable.ic_bell, "3 km 지점 · 도착 전 브리핑", Briefing.at3km(d, if (s.remainSec > 0) min else 10, s.evSoc, s.purpose), if (m > 3000) m - 3000 else -1)
+            TripState.BRIEF_3KM -> Next(R.drawable.ic_flag, if (s.purpose == TripPurpose.PARK) "1 km 지점 · 주차장 안내" else "1 km 지점 · 정차 안내", Briefing.at1km(d, s.purpose), if (m > 1000) m - 1000 else -1)
+            TripState.BRIEF_1KM -> Next(R.drawable.ic_parking, "300 m 지점 · 진입 안내", Briefing.at300m(d, s.purpose), if (m > 300) m - 300 else -1)
             TripState.BRIEF_300M -> Next(R.drawable.ic_check, "도착 · 기어 P", if (s.meetingMode && "arrived" !in s.messagesSent) "도착하면 ${s.recipientName.ifBlank { s.recipientPhone }}에게 알림을 보내요" else "정차 후 기어를 P로 두면 도착 처리돼요", if (m > 0) m else -1)
-            TripState.STOPPING -> Next(R.drawable.ic_clock, "잠시 정차 중", if (d.curbsideAllowed) "${d.curbsideLimitMin}분 넘으면 주차장으로 안내해요" else "정차 금지 구역 · ${d.parkingName}로 안내", -1)
+            TripState.STOPPING -> Next(R.drawable.ic_clock, "잠시 정차 중", when { s.purpose == TripPurpose.PARK -> "주차 목적 · ${d.parkingName.ifBlank { "주차장" }} 입구로 안내"; d.curbsideAllowed -> "${d.curbsideLimitMin}분 넘으면 주차장으로 안내해요"; else -> "정차 금지 구역 · ${d.parkingName}로 안내" }, -1)
             else -> Next(R.drawable.ic_flag, "", "", -1)
         }
     }
@@ -267,6 +311,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderCurbTimer(s: UiState) {
         if (s.state != TripState.ARRIVED && s.state != TripState.DONE) return
+        if (s.purpose == TripPurpose.PARK) return   // 주차 목적: 정차 타이머 없음
         val d = s.destination ?: return
         val ar = b.pageArrived.root
         val timer = ar.findViewById<TextView>(R.id.curbTimer); val bar = ar.findViewById<ProgressBar>(R.id.curbProgress)
@@ -355,21 +400,36 @@ class MainActivity : AppCompatActivity() {
         glass(slots[1], R.drawable.ic_flag, s.destination?.let { "도착 구역 · ${it.name}" } ?: getString(R.string.zone_title))
         glass(slots[2], R.drawable.ic_walk, s.destination?.let { "만남 · ${it.meetingPoint}" } ?: getString(R.string.zone_title))
         if (!idle && !arrived) fetchRoute(s)
-        if (s.state == TripState.IDLE) { routeFor = null; enrichTries = 0 }
+        if (s.state == TripState.IDLE) { routeFor = null; enrichTries = 0; chargerSeeded.clear(); chargerDone.clear() }
         tryEnrich(s)
     }
 
     /** 내비가 준 임의 목적지: 주소(Nominatim) + 타일(주차장·충전소·도로 방위)로 보강. 타일이 아직 없으면 지도가 멈출 때마다 최대 6회 재시도. */
     private fun tryEnrich(s: UiState) {
         val d = s.destination ?: return
-        if (!d.isGeneric || d.id in enriched) return
         val nearby = if (mapOk) zoneMap.nearby(d.latitude, d.longitude) else ZoneMap.Nearby(null, null, null, false)
-        if (mapOk && !nearby.tiles && enrichTries < 6) { enrichTries++; return }
+        // 충전소: 등록 데이터는 바로(타일 없어도), 타일이 오면 한 번 더 합쳐서 적용
+        if (d.id !in chargerSeeded) { chargerSeeded += d.id; if (!nearby.tiles) engine.applyChargers(d, OsmEnricher.chargerCandidates(d, nearby)) }
+        if (nearby.tiles && d.id !in chargerDone) { chargerDone += d.id; val c = OsmEnricher.chargerCandidates(d, nearby); engine.applyChargers(d, c); fetchLiveChargers(d, c) }
+        if (d.id in enriched || !d.isGeneric) return   // 등록 장소는 규칙 데이터가 있으니 주소·주차장 보강은 안 한다
+        if (!nearby.tiles && enrichTries < 6) { enrichTries++; return }
         enriched += d.id
-        engine.status("보강", "타일 ${if (nearby.tiles) "조회" else "없음"} · 주차장 ${nearby.parking?.name ?: "없음"} · 도로 ${nearby.roadBearing?.toInt() ?: "-"}°")
+        engine.status("보강", "타일 ${if (nearby.tiles) "조회" else "없음"} · 주차장 ${nearby.parking?.name ?: "없음"} · 충전소 ${nearby.chargers.size} · 도로 ${nearby.roadBearing?.toInt() ?: "-"}°")
+        val chargers = OsmEnricher.chargerCandidates(d, nearby)
         lifecycleScope.launch {
             val addr = OsmEnricher.address(d.latitude, d.longitude)
-            engine.enrich(OsmEnricher.merge(d, addr, nearby))
+            val merged = OsmEnricher.merge(d, addr, nearby)
+            engine.enrich(merged); engine.applyChargers(merged, OsmEnricher.chargerCandidates(merged, nearby))
+        }
+    }
+
+    /** 2단계(키 필요): 한국환경공단 실시간 충전기 상태로 후보를 덮어쓴다. 키가 없으면 아무것도 안 한다. */
+    private fun fetchLiveChargers(d: Destination, base: List<ChargerCandidate>) {
+        if (!PublicChargerSource.enabled) return
+        lifecycleScope.launch {
+            val live = PublicChargerSource.near(d.latitude, d.longitude, ChargerPlanner.RADIUS_M.toDouble())
+            engine.status("충전 실시간", if (live.isEmpty()) "응답 없음" else "${live.size}곳 · 빈 충전기 ${live.sumOf { maxOf(it.available, 0) }}")
+            if (live.isNotEmpty()) engine.applyChargers(d, ChargerPlanner.merge(base, live))
         }
     }
 
@@ -399,6 +459,7 @@ class MainActivity : AppCompatActivity() {
             setFact(root, R.id.detailParking, parkingText(sel))
             setFact(root, R.id.detailMeet, sel.meetingPoint)
             root.findViewById<ZoneSketchView>(R.id.idleSketch).apply { destination = sel; arrived = false }
+            renderPurpose(root, s)
         }
         root.findViewById<Button>(R.id.startButton).isEnabled = sel != null
         val sw = root.findViewById<MaterialSwitch>(R.id.meetingSwitch)
@@ -440,13 +501,15 @@ class MainActivity : AppCompatActivity() {
             Motion.setVisible(cd, n.inMeters >= 0, fromScale = 0.8f)
             if (n.inMeters >= 0) { if (cd.getTag(R.id.tag_hiding) == true || countdownNum.target <= 0f) countdownNum.snapTo(n.inMeters.toFloat()) else countdownNum.animateTo(n.inMeters.toFloat()) } else countdownNum.snapTo(0f)
             dr.findViewById<TextView>(R.id.stoppingHint).text = if (d.curbsideAllowed) "여기는 ${d.curbsideLimitMin}분까지 세울 수 있어요" else "정차 금지 구역이에요 · ${d.parkingName}로 안내"
-            setFact(dr, R.id.factCurb, curbText(d))
-            dr.findViewById<View>(R.id.factCurb).findViewById<ImageView>(R.id.factIcon).setImageResource(if (d.curbsideAllowed) R.drawable.ic_clock else R.drawable.ic_stop_sign)
+            renderPurpose(dr, s)
+            setFact(dr, R.id.factCurb, if (s.purpose == TripPurpose.PARK) "주차 목적 · 정문 앞 건너뜀" + (if (d.curb.known) " · ${d.curb.label}" else "") else curbText(d))
+            dr.findViewById<View>(R.id.factCurb).findViewById<ImageView>(R.id.factIcon).setImageResource(if (s.purpose == TripPurpose.PARK) R.drawable.ic_parking else if (d.curbsideAllowed) R.drawable.ic_clock else R.drawable.ic_stop_sign)
             setFact(dr, R.id.factValet, if (d.valet) "있음" else "없음")
             setFact(dr, R.id.factParking, parkingText(d))
             val bat = dr.findViewById<View>(R.id.factBattery)
             Motion.setVisible(bat, s.evSoc >= 0, fromY = 8 * dp)
-            if (s.evSoc >= 0) setFact(dr, R.id.factBattery, "${s.evSoc}%" + when { s.evSoc > Briefing.LOW_SOC -> ""; d.parkingCharger -> " · ${d.parkingName.ifBlank { "주차장" }} 충전기 있음"; else -> " · 충전기 정보 없음" })
+            if (s.evSoc >= 0) setFact(dr, R.id.factBattery, "${s.evSoc}%" + when { s.evSoc > Briefing.LOW_SOC -> ""; d.charger != null -> " · ${d.charger.name} ${d.charger.distanceM} m"; d.parkingCharger -> " · ${d.parkingName.ifBlank { "주차장" }} 충전기 있음"; else -> " · 충전기 정보 없음" })
+            renderChargerCard(dr, s, d)
         }
         dr.findViewById<TextView>(R.id.meetingStatusText).text = when {
             !s.meetingMode -> "꺼져 있어요"
@@ -465,7 +528,16 @@ class MainActivity : AppCompatActivity() {
         ar.findViewById<Button>(R.id.doneButton).text = getString(if (boarded) R.string.depart else R.string.done)
         if (d != null) {
             val curbTitle = ar.findViewById<TextView>(R.id.curbTitle); val curbIcon = ar.findViewById<ImageView>(R.id.curbIcon); val curbHint = ar.findViewById<TextView>(R.id.curbHint)
-            if (d.curbsideAllowed) {
+            val park = s.purpose == TripPurpose.PARK
+            ar.findViewById<View>(R.id.curbTimer).visibility = if (park) View.GONE else View.VISIBLE
+            ar.findViewById<View>(R.id.curbProgress).visibility = if (park) View.GONE else View.VISIBLE
+            if (park) {
+                curbTitle.text = "주차하면 끝"; curbIcon.setImageResource(R.drawable.ic_parking); curbIcon.setColorFilter(getColor(R.color.success))
+                curbHint.text = (if (d.parkingName.isNotBlank()) "${d.parkingName}에 세우세요. " else "") + (if (d.curb.known) "정문 앞은 ${d.curb.label}, ${d.curb.rule}." else "정차 타이머는 없어요.")
+            } else if (s.purpose == TripPurpose.VIA) {
+                curbTitle.text = "경유 · 잠깐 멈춤"; curbIcon.setImageResource(R.drawable.ic_timer); curbIcon.setColorFilter(getColor(if (d.curbsideAllowed) R.color.success else R.color.negative))
+                curbHint.text = if (d.curbsideAllowed) "${d.curbsideLimitMin}분 안에 내리고 출발하세요. 문이 닫히면 다음 목적지로 이어가요." else "정차 금지 구역이에요. 바로 내리고 출발하세요."
+            } else if (d.curbsideAllowed) {
                 curbTitle.text = getString(R.string.curb_allowed_title); curbIcon.setImageResource(R.drawable.ic_timer); curbIcon.setColorFilter(getColor(R.color.success))
                 curbHint.text = "${d.meetingPoint}에서 ${d.curbsideLimitMin}분까지 기다릴 수 있어요. 넘으면 ${d.parkingName}로 이동하세요."
             } else {
@@ -476,7 +548,7 @@ class MainActivity : AppCompatActivity() {
             ar.findViewById<TextView>(R.id.parkFee).text = d.parkingFee
             ar.findViewById<TextView>(R.id.parkHint).text = d.parkingHint
             ar.findViewById<ZoneSketchView>(R.id.arrivedSketch).apply { destination = d; arrived = true }
-            renderCurbTimer(s)
+            if (!park) renderCurbTimer(s)
         }
         val card = ar.findViewById<View>(R.id.arrivedMessageCard)
         Motion.setVisible(card, "arrived" in s.messagesSent, fromY = 16 * dp)
@@ -577,6 +649,7 @@ class MainActivity : AppCompatActivity() {
         v.findViewById<View>(R.id.btnTurnRight).setOnClickListener { veh?.turn(TurnSide.RIGHT); v.postDelayed({ veh?.turn(TurnSide.OFF) }, 2000) }
         v.findViewById<View>(R.id.btnDoor).setOnClickListener { veh?.door(true); v.postDelayed({ veh?.door(false) }, 1500) }
         v.findViewById<View>(R.id.btnSoc).setOnClickListener { veh?.soc(15) }
+        v.findViewById<View>(R.id.btnChargeOps).setOnClickListener { engine.navi.requestChargerOperators() }
         v.findViewById<View>(R.id.btnNaviAny).setOnClickListener { engine.debugDestination("판교역", 37.3948, 127.1112) }
         val src = v.findViewById<TextView>(R.id.devSources); val log = v.findViewById<TextView>(R.id.devLog)
         val job = lifecycleScope.launch { engine.ui.collect { s -> src.text = s.sources.entries.joinToString("  ·  ") { "${it.key}: ${it.value}" }; log.text = s.log.joinToString("\n") } }

@@ -42,6 +42,10 @@ data class UiState(
     val arrivedAtMs: Long = 0L,                  // ARRIVED 진입 시각 (정차 타이머)
     val evSoc: Int = -1,                         // EV 배터리 잔량 % (-1 = 모름)
     val doorOpen: Boolean = false,
+    val chargerOperators: List<String> = emptyList(),   // 내비가 아는 충전 사업자 목록 (카탈로그)
+    val naviChargingStops: List<NaviChargingStop> = emptyList(),   // 내비 EV 플래너 충전 경유지
+    val chargerWaypointAdded: Boolean = false,   // 추천 충전소를 경유지로 넣음
+    val purpose: TripPurpose = TripPurpose.STOP, // 이번 목적지에서 할 일
 )
 
 /**
@@ -89,7 +93,14 @@ class TripEngine private constructor(
                 when {
                     target.id == finishedId -> Unit   // 방금 완료한 목적지 (내비 경로 취소 전 재통지)
                     target.id == machine.destination?.id -> Unit   // 같은 목적지 재통지는 무시
-                    else -> { finishedId = null; dispatch(TripEvent.DestinationSet(target)); location.watch(target); addLog(if (d == null) "내비 목적지 '${target.name}' — 등록 데이터 없음 → 일반 규칙" else "목적지: ${d.name}") }
+                    else -> {
+                        finishedId = null
+                        // 출발 전에 고른 목적이 이 목적지 것이면 유지, 아니면 정차 규칙으로 기본값
+                        val chosen = pendingPurpose?.takeIf { it.first == target.id }?.second ?: TripPurpose.defaultFor(target)
+                        pendingPurpose = null; machine.purpose = chosen; _ui.value = _ui.value.copy(purpose = chosen)
+                        dispatch(TripEvent.DestinationSet(target)); location.watch(target)
+                        addLog((if (d == null) "내비 목적지 '${target.name}' — 등록 데이터 없음 → 일반 규칙" else "목적지: ${d.name}") + " · 목적 ${chosen.short}")
+                    }
                 }
             }
             override fun onRemainDistance(meters: Int, remainSec: Int) = post {
@@ -98,6 +109,20 @@ class TripEngine private constructor(
                 _ui.value = _ui.value.copy(remainMeters = meters, remainSec = remainSec); dispatch(TripEvent.RemainDistance(meters, remainSec))
             }
             override fun onArrived() = post { addLog("내비: 도착"); dispatch(TripEvent.NaviArrived) }
+            override fun onChargerOperators(names: List<String>) = post { _ui.value = _ui.value.copy(chargerOperators = names); machine.destination?.let { d -> if (d.chargers.isNotEmpty()) applyChargers(d, d.chargers) } }
+            override fun onTripEstimate(lat: Double, lng: Double, distanceM: Int, etaSec: Int, socAtDest: Int) = post {
+                val d = machine.destination ?: return@post
+                val c = d.charger ?: return@post
+                if (dist(c.lat, c.lng, lat, lng) > 50.0) return@post
+                // 에뮬레이터 내비는 차량 잔량과 무관하게 자기 에너지 모델로 계산한다 → 현재 잔량보다 크면 믿지 않는다
+                if (_ui.value.evSoc in 0 until socAtDest) { addLog("충전소 '${c.name}' 내비 예상 잔량 $socAtDest% > 현재 ${_ui.value.evSoc}% → 무시"); return@post }
+                val upd = c.copy(socAtArrival = socAtDest)
+                machine.updateDestination(d.copy(charger = upd, chargers = d.chargers.map { if (it.lat == c.lat && it.lng == c.lng) upd else it }))
+                _ui.value = _ui.value.copy(destination = machine.destination); addLog("충전소 '${c.name}' 도착 예상 잔량 $socAtDest%")
+            }
+            override fun onNaviChargingStops(stops: List<NaviChargingStop>) = post {
+                if (stops != _ui.value.naviChargingStops) { _ui.value = _ui.value.copy(naviChargingStops = stops); if (stops.isNotEmpty()) addLog("내비 충전 경유지: ${stops.joinToString { "${it.name} ${it.maxKw}kW" }}") }
+            }
             override fun onStatus(text: String) = status("내비", text)
         }) }.onFailure { status("내비", "시작 실패 ${it.message}") }
         runCatching { vehicle.start(object : VehicleSignalSource.Listener {
@@ -148,12 +173,47 @@ class TripEngine private constructor(
         addLog("목적지 보강: ${listOfNotNull(d.address.takeIf { it.isNotBlank() }, d.parkingName.takeIf { it.isNotBlank() }?.let { "$it ${d.parkingDistanceM}m" }).joinToString(" · ").ifBlank { "추가 정보 없음" }}")
     }
 
+    /**
+     * 충전소 후보(타일·등록 데이터·실시간)를 목적지에 붙이고 1곳을 추천한다. 추천이 바뀌면 내비에 가상 경로를 물어 도착 예상 잔량을 받는다.
+     * 내비 EV 플래너가 이미 충전 경유지를 잡았으면(장거리) 우리 추천은 "도착 후" 보조로만 남긴다.
+     */
+    fun applyChargers(target: Destination, cands: List<ChargerCandidate>) = post {
+        val d = machine.destination ?: return@post
+        if (d.id != target.id) return@post
+        val parking = d.zone.firstOrNull { it.type == "parking" && it.absolute }
+        // 내비 사업자 목록은 카탈로그(선호 설정 아님)라 가산점에는 안 쓴다. 선호 사업자는 키 단계에서 설정으로 받는다.
+        val pick = ChargerPlanner.pick(cands, emptyList(), parking?.lat ?: Double.NaN, parking?.lng ?: Double.NaN)
+        val keepSoc = d.charger?.takeIf { old -> pick != null && dist(old.lat, old.lng, pick.lat, pick.lng) < 40.0 }?.socAtArrival ?: -1
+        val nd = d.copy(chargers = cands, charger = pick?.copy(socAtArrival = if (pick.socAtArrival >= 0) pick.socAtArrival else keepSoc), parkingCharger = d.parkingCharger || (pick != null && parking != null && dist(pick.lat, pick.lng, parking.lat, parking.lng) < 60.0))
+        machine.updateDestination(nd); _ui.value = _ui.value.copy(destination = nd)
+        if (pick == null) { addLog("충전소 후보 없음 (반경 ${ChargerPlanner.RADIUS_M} m)"); return@post }
+        addLog("충전 추천: ${pick.name} · ${pick.summary()}")
+        if (keepSoc < 0 && pick.socAtArrival < 0) navi.requestTripEstimate(pick.name, pick.lat, pick.lng)
+    }
+
+    /** 추천 충전소를 내비 경유지로 추가 (운전자가 카드에서 누름). */
+    fun addChargerWaypoint() {
+        val c = machine.destination?.charger ?: return
+        navi.addWaypoint(c.name, c.lat, c.lng); _ui.value = _ui.value.copy(chargerWaypointAdded = true)
+        say("${c.name}을 경유지로 넣었어요."); addLog("경유지 추가: ${c.name}")
+    }
+
     /** 개발용: 내비 콜백과 같은 경로로 임의 목적지를 넣는다 (에뮬레이터 내비 검색 없이 A 시나리오 재현). */
     fun debugDestination(name: String, lat: Double, lng: Double) { naviListener?.onDestinationSet(name, lat, lng) }
     private var naviListener: NaviSource.Listener? = null
 
-    /** 출발 전 선택만 (안내는 startGuidance 에서). */
-    fun selectDestination(d: Destination) { _ui.value = _ui.value.copy(selected = d) }
+    /** 출발 전 선택만 (안내는 startGuidance 에서). 목적은 정차 규칙 기본값으로 돌아간다. */
+    fun selectDestination(d: Destination) { val p = TripPurpose.defaultFor(d); pendingPurpose = d.id to p; _ui.value = _ui.value.copy(selected = d, purpose = p) }
+
+    private var pendingPurpose: Pair<String, TripPurpose>? = null   // 출발 전 고른 목적 (목적지 id, 목적)
+
+    /** 목적 변경: 출발 전이면 기억해 뒀다가 내비가 목적지를 돌려줄 때 적용, 안내 중이면 바로 적용(이후 브리핑부터 반영). */
+    fun setPurpose(p: TripPurpose) = post {
+        val d = machine.destination
+        if (d != null && machine.state != TripState.IDLE) { machine.purpose = p; addLog("목적 변경: ${p.short}") }
+        else _ui.value.selected?.let { pendingPurpose = it.id to p }
+        _ui.value = _ui.value.copy(purpose = p)
+    }
 
     /** 내비에 경로 요청. 모의 소스는 즉시, NaviHelper 는 내비가 DestinationInfo 로 되돌려 줄 때 ARMED 가 된다. */
     fun startGuidance() { val d = _ui.value.selected ?: return; finishedId = null; addLog("안내 시작 요청: ${d.name}"); navi.requestRoute(d) }
@@ -175,7 +235,7 @@ class TripEngine private constructor(
     /** 음성 인식이 없는 환경(에뮬레이터)용 텍스트 경로 */
     fun submitUtterance(text: String) = post { onUtterance(text) }
 
-    fun reset() = post { insideRadius = false; dispatch(TripEvent.Reset); _ui.value = _ui.value.copy(remainMeters = -1, remainSec = -1, selected = null, messagesSent = emptyList(), lastMessage = "", lastSpoken = "", arrivedAtMs = 0L) }
+    fun reset() = post { insideRadius = false; dispatch(TripEvent.Reset); _ui.value = _ui.value.copy(remainMeters = -1, remainSec = -1, selected = null, messagesSent = emptyList(), lastMessage = "", lastSpoken = "", arrivedAtMs = 0L, chargerWaypointAdded = false) }
     fun endGuidance() { finishedId = machine.destination?.id; navi.cancelRoute(); reset() }
     /** 도착 화면의 완료: 내비 경로는 건드리지 않고(내비가 앞으로 튀어나오지 않게) 같은 목적지 재통지만 무시 */
     fun done() { finishedId = machine.destination?.id; reset() }
@@ -189,7 +249,7 @@ class TripEngine private constructor(
             t.contains("마중") && (t.contains("켜") || t.contains("시작")) -> { setMeetingMode(true); say("마중 모드 켰어요.") }
             t.contains("마중") && (t.contains("꺼") || t.contains("해제")) -> { setMeetingMode(false); say("마중 모드 껐어요.") }
             d == null -> say("먼저 목적지를 설정해 주세요.")
-            else -> say(Briefing.answer(d, text))
+            else -> say(Briefing.answer(d, text, machine.purpose))
         }
     }
 
@@ -208,14 +268,16 @@ class TripEngine private constructor(
     fun status(key: String, text: String) = post { sourceStatus[key] = text; _ui.value = _ui.value.copy(sources = sourceStatus.toMap()); addLog("[$key] $text") }
 
     private fun addLog(line: String) {
+        if (BuildConfig.DEBUG) android.util.Log.d("LastMile", line)   // 디버그 빌드: logcat 에도 남긴다 (에뮬레이터 검증용)
         log.addFirst("${TIME.format(Date())} $line"); while (log.size > 60) log.removeLast()
         _ui.value = _ui.value.copy(log = log.toList())
     }
 
     private fun post(block: () -> Unit) { if (Looper.myLooper() == Looper.getMainLooper()) block() else main.post(block) }
 
-    private fun dist(d: Destination, lat: Double, lng: Double): Double {
-        val dy = (d.latitude - lat) * 111_000; val dx = (d.longitude - lng) * 111_000 * Math.cos(Math.toRadians(lat)); return Math.sqrt(dx * dx + dy * dy)
+    private fun dist(d: Destination, lat: Double, lng: Double): Double = dist(d.latitude, d.longitude, lat, lng)
+    private fun dist(lat1: Double, lng1: Double, lat: Double, lng: Double): Double {
+        val dy = (lat1 - lat) * 111_000; val dx = (lng1 - lng) * 111_000 * Math.cos(Math.toRadians(lat)); return Math.sqrt(dx * dx + dy * dy)
     }
 
     companion object {

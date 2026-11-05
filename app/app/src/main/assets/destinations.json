@@ -2,6 +2,7 @@
  "destinations": [
   {
    "id": "restaurant",
+   "curbLine": "yellow_solid",
    "name": "한식당 소담",
    "category": "식당",
    "lat": 37.3997,
@@ -42,6 +43,7 @@
   },
   {
    "id": "hospital",
+   "curbLine": "yellow_dashed",
    "name": "성남시립병원",
    "category": "병원",
    "lat": 37.4312,
@@ -87,6 +89,7 @@
   },
   {
    "id": "airport",
+   "curbLine": "yellow_dashed",
    "name": "인천공항 제1터미널 입국장",
    "category": "공항",
    "lat": 37.4489,
@@ -126,6 +129,7 @@
   },
   {
    "id": "school",
+   "curbLine": "yellow_double",
    "name": "소담초등학교",
    "category": "학교",
    "lat": 37.4052,
@@ -171,6 +175,7 @@
   },
   {
    "id": "apartment",
+   "curbLine": "white_solid",
    "name": "래미안 소담 아파트",
    "category": "아파트",
    "lat": 37.3921,

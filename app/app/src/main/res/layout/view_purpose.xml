@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 이번 목적지에서 할 일: 잠깐 정차·픽업 / 도착 후 주차 / 경유. 상세 카드(출발 전)와 안내 중 카드에 같이 들어간다. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/purposeRow" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+    <TextView android:id="@+id/purposeStop" style="@style/Chip" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="64dp" android:text="@string/purpose_stop" android:maxLines="1" android:ellipsize="end" android:clickable="true" android:focusable="true"/>
+    <TextView android:id="@+id/purposePark" style="@style/Chip" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="64dp" android:layout_marginStart="10dp" android:text="@string/purpose_park" android:maxLines="1" android:ellipsize="end" android:clickable="true" android:focusable="true"/>
+    <TextView android:id="@+id/purposeVia" style="@style/Chip" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="64dp" android:layout_marginStart="10dp" android:text="@string/purpose_via" android:maxLines="1" android:ellipsize="end" android:clickable="true" android:focusable="true"/>
+</LinearLayout>

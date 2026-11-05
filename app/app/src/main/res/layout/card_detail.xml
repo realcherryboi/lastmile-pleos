@@ -8,6 +8,9 @@
     <TextView android:id="@+id/detailCategory" style="@style/Chip" android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="@drawable/bg_chip_accent" android:textColor="@color/accent" android:minHeight="48dp" android:paddingStart="18dp" android:paddingEnd="18dp"/>
     <TextView android:id="@+id/detailName" style="@style/Text.Title" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:maxLines="2" android:ellipsize="end"/>
     <TextView android:id="@+id/detailAddress" style="@style/Text.Label" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:maxLines="1" android:ellipsize="end"/>
+    <!-- 이번 목적지에서 할 일 -->
+    <TextView style="@style/Text.Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/purpose_title"/>
+    <include layout="@layout/view_purpose" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp"/>
     <View android:layout_width="match_parent" android:layout_height="2dp" android:background="@color/outline" android:layout_marginTop="24dp" android:layout_marginBottom="20dp"/>
     <include android:id="@+id/detailCurb" layout="@layout/row_fact"/>
     <include android:id="@+id/detailParking" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp"/>

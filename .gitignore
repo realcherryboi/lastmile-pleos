@@ -14,6 +14,7 @@ app/.idea/
 app/*.iml
 app/keystore/
 app/keystore.properties
+app/keys.properties
 # OS
 .DS_Store
 app/.kotlin/

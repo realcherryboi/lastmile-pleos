@@ -9,6 +9,11 @@ val keystoreProps = Properties().apply {
     val f = rootProject.file("keystore.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
+// 외부 데이터 키 (커밋 제외). 없으면 빈 문자열 → 해당 기능은 조용히 꺼진다. 예시: keys.properties.example
+val keyProps = Properties().apply {
+    val f = rootProject.file("keys.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
 
 android {
     namespace = "kr.lastmile.app"
@@ -21,6 +26,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+        buildConfigField("String", "DATA_GO_KR_KEY", "\"${keyProps.getProperty("DATA_GO_KR_KEY", "")}\"")   // 공공데이터포털(한국환경공단 충전소) 일반 인증키
     }
     signingConfigs {
         create("release") {

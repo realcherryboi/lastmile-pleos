@@ -31,8 +31,12 @@ data class Destination(
     val rulesKnown: Boolean = true,           // false = 정차 규칙 데이터 없음 → 일반 도로 기준 안내
     val parkingCharger: Boolean = false,      // 주차장에 EV 충전기
     val parkingDistanceM: Int = -1,           // 정문 → 주차장 입구 거리 (navi 목적지 보강값)
+    val charger: ChargerCandidate? = null,    // 머무는 동안 충전 추천 1곳 (ChargerPlanner)
+    val chargers: List<ChargerCandidate> = emptyList(),   // 반경 내 후보 전체 (실시간 데이터 병합용)
+    val curbLine: String = "",                // 정문 앞 차선 (CurbLine.key: white_solid / yellow_dashed / yellow_solid / yellow_double)
 ) {
     val isGeneric get() = source == "navi"
+    val curb: CurbLine get() = CurbLine.of(curbLine)
 
     companion object {
         /** 내비 목적지 → 일반 규칙 목적지. id 는 좌표 기반이라 같은 곳은 같은 id (완료 목적지 무시 로직과 호환). */
@@ -77,6 +81,7 @@ class DestinationRepository(private val context: Context) {
                 curbsideLimitMin = o.optInt("curbsideLimitMin", 0),
                 valet = o.optBoolean("valet", false),
                 parkingName = o.optString("parkingName"),
+                curbLine = o.optString("curbLine"),
                 parkingFee = o.optString("parkingFee"),
                 parkingHint = o.optString("parkingHint"),
                 meetingPoint = o.optString("meetingPoint"),

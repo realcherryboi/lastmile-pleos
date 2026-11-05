@@ -321,8 +321,8 @@ class ZoneMap(private val context: Context, private val onAvailable: (Boolean) -
     }
 
     // ---------- 타일 조회 (키 없는 OSM 데이터) ----------
-    data class Place(val name: String, val lat: Double, val lng: Double, val distanceM: Int)
-    data class Nearby(val parking: Place?, val charger: Place?, val roadBearing: Double?, val tiles: Boolean)
+    data class Place(val name: String, val lat: Double, val lng: Double, val distanceM: Int, val operator: String = "")
+    data class Nearby(val parking: Place?, val charger: Place?, val roadBearing: Double?, val tiles: Boolean, val chargers: List<Place> = emptyList())
 
     /**
      * 이미 내려받은 벡터 타일에서 목적지 주변의 주차장(poi class=parking)·충전소(charging_station)·가장 가까운 도로(transportation) 방위를 찾는다.
@@ -331,6 +331,7 @@ class ZoneMap(private val context: Context, private val onAvailable: (Boolean) -
     fun nearby(lat: Double, lng: Double, radiusM: Double = 400.0): Nearby {
         if (map == null) return Nearby(null, null, null, false)
         val st = style ?: return Nearby(null, null, null, false)
+        val chargerRadiusM = 600.0
         val src = st.sources.firstOrNull { it is org.maplibre.android.style.sources.VectorSource } as? org.maplibre.android.style.sources.VectorSource ?: return Nearby(null, null, null, false)
         fun centroid(g: org.maplibre.geojson.Geometry?): Pair<Double, Double>? {
             val pts: List<Point> = when (g) {
@@ -347,17 +348,19 @@ class ZoneMap(private val context: Context, private val onAvailable: (Boolean) -
         val pois: List<Feature> = runCatching { src.querySourceFeatures(arrayOf("poi"), null) }.getOrDefault(emptyList())
         val roads: List<Feature> = runCatching { src.querySourceFeatures(arrayOf("transportation"), null) }.getOrDefault(emptyList())
         val tiles = pois.isNotEmpty() || roads.isNotEmpty()
-        fun pick(cls: Set<String>, fallback: String): Place? = pois.mapNotNull { f ->
+        fun places(cls: Set<String>, fallback: String, r: Double): List<Place> = pois.mapNotNull { f ->
             val c = f.getStringProperty("class") ?: return@mapNotNull null
             if (c !in cls) return@mapNotNull null
             val p = centroid(f.geometry()) ?: return@mapNotNull null
             val dm = ZoneGeo.distanceM(lat, lng, p.first, p.second)
-            if (dm > radiusM) return@mapNotNull null
+            if (dm > r) return@mapNotNull null
             val name = listOf("name:ko", "name").firstNotNullOfOrNull { k -> f.getStringProperty(k)?.takeIf { it.isNotBlank() } } ?: fallback
-            Place(name, p.first, p.second, dm.toInt())
-        }.minByOrNull { it.distanceM }
-        val parking = pick(setOf("parking"), "인근 주차장")
-        val charger = pick(setOf("charging_station"), "EV 충전소")
+            val op = listOf("operator", "brand").firstNotNullOfOrNull { k -> runCatching { f.getStringProperty(k) }.getOrNull()?.takeIf { it.isNotBlank() } } ?: ""
+            Place(name, p.first, p.second, dm.toInt(), op)
+        }.distinctBy { "${"%.5f".format(it.lat)},${"%.5f".format(it.lng)}" }.sortedBy { it.distanceM }
+        val parking = places(setOf("parking"), "인근 주차장", radiusM).firstOrNull()
+        val chargers = places(setOf("charging_station"), "EV 충전소", chargerRadiusM).take(6)
+        val charger = chargers.firstOrNull { it.distanceM <= radiusM }
         // 가장 가까운 도로 구간의 방위 (정문 앞 연석 방향)
         var best = Double.MAX_VALUE; var bearing: Double? = null
         for (f in roads) {
@@ -370,7 +373,7 @@ class ZoneMap(private val context: Context, private val onAvailable: (Boolean) -
                 if (dm < best && dm < 80.0) { best = dm; bearing = ZoneGeo.bearing(a.latitude(), a.longitude(), b.latitude(), b.longitude()) }
             }
         }
-        return Nearby(parking, charger, bearing, tiles)
+        return Nearby(parking, charger, bearing, tiles, chargers)
     }
 
     private fun circle(lat: Double, lng: Double, r: Double): Polygon {

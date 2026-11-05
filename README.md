@@ -26,6 +26,8 @@
 - **지도**: MapLibre(오픈소스) + OpenFreeMap 벡터 타일(키 불필요, 인터넷 필요). 오프라인이면 같은 자리에 도착 구역 스케치(ZoneSketchView)가 대신 표시됨. 경로선은 공개 OSRM 데모 서버(데모용, 응답 없으면 생략)
 - **임의 목적지**: 내비에 어떤 목적지를 넣어도 앱이 따라온다. 등록 장소(5곳)는 확인된 정차·주차 데이터로, 그 외는 "일반 도로 기준 5분 이내 정차"로 안내하고 주소(Nominatim 역지오코딩)·가장 가까운 주차장·EV 충전소·정문 앞 도로 방위를 이미 내려받은 지도 타일(OpenStreetMap)에서 찾아 채운다. 추가 키·서버 없음
 - **차량 신호 심화**(Vehicle SDK): 우측 방향지시등 → 잠시 정차 안내, 승객석 문 열림→닫힘 → 승하차 확인(정차 타이머 종료), EV 배터리 20% 이하 → 충전기 있는 주차장 안내. 권한 `CAR_LIGHTS`·`CAR_DOORS`·`CAR_ENERGY`
+- **목적 선택**: 목적지마다 "정차 · 픽업 / 도착 후 주차 / 경유"를 고른다(출발 전 카드와 안내 중 카드의 칩). 정차 금지 장소는 주차가 기본. 주차면 정문 앞을 건너뛰고 주차장·요금·충전기로 바로 안내하고 도착 화면에 정차 타이머가 없다. 경유면 잠깐 멈춰 내리고 문이 닫히면 "다음 목적지로 이어갈게요". 정문 앞 **차선**(흰 실선 = 주·정차 가능, 황색 점선 = 5분 정차, 황색 실선 = 주·정차 금지, 황색 복선 = 절대 금지)을 데이터에 두고 브리핑 문장과 카드에 그대로 말한다. 임의 목적지는 차선 정보가 없어 "황색 점선이면 5분, 실선이면 금지"로 안내
+- **도착해서 충전**(EV): 장거리 충전 경유는 내비 EV 경로 플래너의 몫이고, 이 앱은 "도착해서 세우는 동안 충전"만 본다. 배터리 40% 이하면 목적지 반경 500 m 안 충전소 후보(등록 장소의 주차장 충전기 + 지도 타일의 충전소)에서 정문·주차장과의 거리로 1곳을 골라 카드와 3 km 브리핑에 넣고, "경유지 추가" 한 번으로 내비 경로에 넣는다(NaviHelper `addWaypoint`). 내비의 충전 사업자 목록(`getChargerOperatorInfo`)·EV 플래너 충전 경유지(`DrivingInfo`)·후보까지의 가상 경로 도착 잔량(`requestTrip`)을 같이 쓴다. 실시간 빈 충전기·운영기관·출력은 공공데이터포털 키가 있을 때만 붙는다(`app/keys.properties`, 아래 데이터 출처)
 - **지도 모션**: 3D 건물(타일 render_height)과 목적지 건물 강조, 주행 중 헤딩업·기울임 카메라(easeCamera), 차 마커 스프링 보간, 경로선 그려지기와 지나온 구간 회색 처리, 도착 순간 반경 펄스
 - **모션**: 스프링 기반(androidx.dynamicanimation). 페이지·카드·시트 전환, 숫자 카운팅, 진행 바, 누름 반응 모두 현재 값에서 이어지는 스프링(기본 임계감쇠). 시트가 올라오면 뒤 화면은 블러·축소로 밀려남. 지도 위 요소는 유리 재질(반투명 + 하이라이트 테두리)
 - APK는 arm64-v8a만 포함 (Pleos 실차·에뮬레이터 모두 arm64)
@@ -60,6 +62,7 @@ scripts/inject.sh     Virtual Console 포트 포워딩
 | Noto Sans (OpenFreeMap 글리프) | 지도 라벨 글꼴 | SIL Open Font License 1.1 |
 | AndroidX (core, appcompat, lifecycle, dynamicanimation) · Material Components · Kotlin Coroutines | 앱 프레임워크 · 스프링 모션 · UI 컴포넌트 | Apache License 2.0 |
 | Pleos Connect SDK (Vehicle · NaviHelper · TextToSpeech · SpeechToText · FusedLocation) | 차량 신호 · 내비 연동 · 음성 · 위치 | 현대자동차그룹 Pleos Playground 이용 약관 (비오픈소스) |
+| [한국환경공단 전기자동차 충전소 정보](https://www.data.go.kr/data/15076352/openapi.do) (공공데이터포털, 선택) | 목적지 주변 충전소 실시간 상태·운영기관·출력·주차료 | 공공누리 1유형(출처 표시). `app/keys.properties` 의 `DATA_GO_KR_KEY` 가 있을 때만 호출, 없으면 기능이 조용히 꺼짐 |
 
 - 앱 아이콘과 화면 아이콘(`res/drawable/ic_*.xml`)은 이 프로젝트에서 직접 그린 벡터 드로어블입니다.
 - 데모 목적지 5곳의 상호·주소·좌표·정문/주차장/만남 지점 데이터(`assets/destinations.json`)는 시연용 샘플이며 실제 시설 정보가 아닙니다.

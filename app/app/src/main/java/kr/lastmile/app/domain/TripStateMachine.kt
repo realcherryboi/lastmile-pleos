@@ -41,6 +41,7 @@ class TripStateMachine {
     var destination: Destination? = null
         private set
     var meetingMode: Boolean = false
+    var purpose: TripPurpose = TripPurpose.STOP   // 이번 목적지에서 할 일 (엔진이 목적지 설정 때 정한다)
     var evSoc: Int = -1                      // 마지막 배터리 잔량 (-1 = 모름)
         private set
 
@@ -65,14 +66,14 @@ class TripStateMachine {
                 when {
                     state == TripState.ARMED && event.meters <= 3000 -> {
                         transition(TripState.BRIEF_3KM, out)
-                        out += TripAction.Speak(Briefing.at3km(d, lastRemainMin, evSoc))
+                        out += TripAction.Speak(Briefing.at3km(d, lastRemainMin, evSoc, purpose))
                         if (meetingMode) out += TripAction.Notify("eta", Briefing.meetingEta(d, lastRemainMin))
                     }
                     state == TripState.BRIEF_3KM && event.meters <= 1000 -> {
-                        transition(TripState.BRIEF_1KM, out); out += TripAction.Speak(Briefing.at1km(d))
+                        transition(TripState.BRIEF_1KM, out); out += TripAction.Speak(Briefing.at1km(d, purpose))
                     }
                     state == TripState.BRIEF_1KM && event.meters <= 300 -> {
-                        transition(TripState.BRIEF_300M, out); out += TripAction.Speak(Briefing.at300m(d))
+                        transition(TripState.BRIEF_300M, out); out += TripAction.Speak(Briefing.at300m(d, purpose))
                     }
                 }
             }
@@ -88,14 +89,14 @@ class TripStateMachine {
             is TripEvent.EvSoc -> evSoc = event.percent
             is TripEvent.Door -> if (d != null && state == TripState.ARRIVED) {
                 if (event.open) doorOpened = true
-                else if (doorOpened) { transition(TripState.DONE, out); out += TripAction.Speak(Briefing.boarded(d, meetingMode)) }
+                else if (doorOpened) { transition(TripState.DONE, out); out += TripAction.Speak(Briefing.boarded(d, meetingMode, purpose)) }
             }
         }
         return out
     }
 
     private fun stopping(d: Destination, out: MutableList<TripAction>) {
-        if (state in listOf(TripState.BRIEF_300M, TripState.BRIEF_1KM)) { transition(TripState.STOPPING, out); out += TripAction.Speak(Briefing.stopping(d)) }
+        if (state in listOf(TripState.BRIEF_300M, TripState.BRIEF_1KM)) { transition(TripState.STOPPING, out); out += TripAction.Speak(Briefing.stopping(d, purpose)) }
     }
 
     private fun checkArrival(d: Destination?, out: MutableList<TripAction>) {
@@ -103,7 +104,7 @@ class TripStateMachine {
         if (nearDestination && parked) {
             transition(TripState.ARRIVED, out)
             if (meetingMode) out += TripAction.Notify("arrived", Briefing.meetingArrived(d))
-            out += TripAction.Speak(Briefing.arrived(d, meetingMode))
+            out += TripAction.Speak(Briefing.arrived(d, meetingMode, purpose))
         }
     }
 

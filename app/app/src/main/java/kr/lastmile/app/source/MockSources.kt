@@ -14,6 +14,9 @@ class MockNaviSource : NaviSource {
     }
     fun setRemainDistance(meters: Int) { listener?.onRemainDistance(meters, meters / 10) }   // 36km/h 가정
     fun arrive() { listener?.onArrived() }
+    override fun requestChargerOperators() { listener?.onChargerOperators(listOf("환경부", "현대 E-pit")) }
+    override fun requestTripEstimate(name: String, lat: Double, lng: Double) { listener?.onTripEstimate(lat, lng, 1200, 240, 16) }
+    override fun addWaypoint(name: String, lat: Double, lng: Double) { listener?.onStatus("경유지 추가: $name") }
 }
 
 class MockVehicleSignalSource : VehicleSignalSource {

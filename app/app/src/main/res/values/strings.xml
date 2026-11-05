@@ -20,6 +20,13 @@
     <string name="boarded_title">승하차 확인했어요</string>
     <string name="boarded_sub">문이 닫혔어요 · 안전 운전하세요</string>
     <string name="battery_label">배터리</string>
+    <string name="purpose_title">이번 목적지에서</string>
+    <string name="purpose_stop">정차 · 픽업</string>
+    <string name="purpose_park">도착 후 주차</string>
+    <string name="purpose_via">경유</string>
+    <string name="charger_add_waypoint">경유지 추가</string>
+    <string name="charger_added">경유지 추가됨</string>
+    <string name="charger_navi_planned">내비 계획됨</string>
     <string name="rules_generic">일반 규칙</string>
     <string name="depart">출발</string>
     <string name="stopping_title">잠시 정차</string>
