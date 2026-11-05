@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#66000000" android:clickable="true" android:focusable="true">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_gravity="bottom" android:orientation="vertical" android:background="@drawable/bg_sheet" android:padding="@dimen/page_padding">
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:clickable="true" android:focusable="true">
+    <View android:id="@+id/voiceScrim" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#40000000"/>
+    <LinearLayout android:id="@+id/voicePanel" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_gravity="bottom" android:orientation="vertical" android:background="@drawable/bg_sheet_glass" android:elevation="24dp" android:outlineProvider="background" android:paddingStart="@dimen/page_padding" android:paddingEnd="@dimen/page_padding" android:paddingTop="16dp" android:paddingBottom="@dimen/page_padding">
+        <View android:id="@+id/voiceGrabber" android:layout_width="72dp" android:layout_height="8dp" android:layout_gravity="center_horizontal" android:layout_marginBottom="24dp" android:background="@drawable/bg_chip" android:alpha="0.6"/>
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
             <FrameLayout android:layout_width="96dp" android:layout_height="96dp" android:background="@drawable/bg_circle_accent">
                 <ImageView android:layout_width="48dp" android:layout_height="48dp" android:layout_gravity="center" android:src="@drawable/ic_mic" android:tint="#FFFFFF"/>

@@ -24,6 +24,7 @@
 - 사용 SDK: Vehicle, NaviHelper, TextToSpeech, SpeechToText, FusedLocation
 - 차량 신호 연출은 Pleos Connect Virtual Console (`scripts/inject.sh`로 포트 포워딩 후 http://127.0.0.1:8088)
 - **지도**: MapLibre(오픈소스) + OpenFreeMap 벡터 타일(키 불필요, 인터넷 필요). 오프라인이면 같은 자리에 도착 구역 스케치(ZoneSketchView)가 대신 표시됨. 경로선은 공개 OSRM 데모 서버(데모용, 응답 없으면 생략)
+- **모션**: 스프링 기반(androidx.dynamicanimation). 페이지·카드·시트 전환, 숫자 카운팅, 진행 바, 누름 반응 모두 현재 값에서 이어지는 스프링(기본 임계감쇠). 시트가 올라오면 뒤 화면은 블러·축소로 밀려남. 지도 위 요소는 유리 재질(반투명 + 하이라이트 테두리)
 - APK는 arm64-v8a만 포함 (Pleos 실차·에뮬레이터 모두 arm64)
 
 ## APK 위치
@@ -31,7 +32,7 @@
 - `apk/김상헌_라스트마일_release.apk` — `cd app && ./gradlew assembleSdkRelease` 로 생성한 서명(v3) 빌드. 서명 키·비밀번호는 `app/keystore/`, `app/keystore.properties`(비공개)
 
 ## 시연 영상
-- `docs/video/lastmile_demo_1080p.mp4` (105초, 무음): 목적지 목록·상세(도착 구역 지도 미리보기) → 안내 시작·2.6 km 브리핑 → 다음 안내 카드·진행 바·ETA·실제 지도(경로선·차 마커) → 1 km·300 m 안내 → 기어 P 도착(정차 금지·도착 구역 지도)
+- `docs/video/lastmile_demo_1080p.mp4` (105초, 무음): 목적지 목록·상세(도착 구역 지도 미리보기, 스프링 전환) → 안내 시작·2.6 km 브리핑 → 다음 안내 카드·진행 바·ETA·실제 지도(경로선·차 마커) → 1 km·300 m 안내 → 물어보기 시트(블러 밀어내기) → 기어 P 도착(정차 금지·도착 구역 지도)
 
 ## 저장소 구조
 ```

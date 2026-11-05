@@ -108,10 +108,13 @@ class ZoneMap(private val context: Context, private val onAvailable: (Boolean) -
     fun attachTo(slot: FrameLayout) {
         if (view.parent === slot) return
         (view.parent as? ViewGroup)?.removeView(view)
-        slot.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        slot.addView(view, minOf(1, slot.childCount), FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))   // 스케치 위, 유리 오버레이 아래
         holdUntil = 0L
         view.post { apply(force = true) }
     }
+
+    /** "현재 위치로": 사용자 조작 유지 시간을 끝내고 차+도착 구역이 모두 보이게 되돌린다. */
+    fun recenter() { holdUntil = 0L; apply(force = true) }
 
     fun update(dest: Destination?, carLat: Double, carLng: Double, bearing: Float, arrived: Boolean, includeCar: Boolean) {
         val changed = this.dest?.id != dest?.id

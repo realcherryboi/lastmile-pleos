@@ -3,7 +3,6 @@ package kr.lastmile.app.ui
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.RectF
 import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.View
@@ -13,14 +12,29 @@ import kr.lastmile.app.R
 /**
  * 내비 앱의 경로 진행 바. 4개 이정표(3km·1km·300m·도착) 위를 차 마커가 이동한다.
  * 거리 축은 선형이 아니라 구간별(>3km / 3~1km / 1km~300m / 300m~0)로 나눠 라스트마일을 넓게 보여 준다.
+ * 차 마커 위치는 스프링(임계감쇠)으로 이어지고, 이정표를 지나는 순간 그 노드가 살짝 튀며 채워진다.
  */
 class RouteProgressView @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : View(context, attrs) {
     var remainMeters: Int = -1
-        set(v) { field = v; invalidate() }
+        set(v) {
+            val first = field < 0
+            field = v
+            val p = progress()
+            if (first || v < 0) pos.snapTo(p) else pos.animateTo(p)
+            invalidate()
+        }
     var passed: Int = 0            // 지난 이정표 수 (0~4)
-        set(v) { field = v; invalidate() }
+        set(v) {
+            if (v > field) for (i in field until v) nodeScale[i].let { it.snapTo(1.6f); it.animateTo(1f) }
+            if (v < field) for (i in v until field) nodeScale[i].snapTo(1f)
+            field = v; invalidate()
+        }
 
     private val labels = listOf("3 km", "1 km", "300 m", "도착")
+    private val xs = listOf(0.12f, 0.45f, 0.75f, 1f)
+    private val pos = SpringValue(0f, Motion.Value) { invalidate() }
+    private val nodeScale = List(4) { SpringValue(1f, Motion.Pop) { invalidate() } }
+
     private val track = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = c(R.color.outline); strokeCap = Paint.Cap.ROUND }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = c(R.color.accent); strokeCap = Paint.Cap.ROUND }
     private val node = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -51,16 +65,16 @@ class RouteProgressView @JvmOverloads constructor(context: Context, attrs: Attri
         val stroke = 10f * d
         track.strokeWidth = stroke; fill.strokeWidth = stroke
         canvas.drawLine(padX, y, padX + w, y, track)
-        val p = progress()
+        val p = pos.value.coerceIn(0f, 1f)
         val px = padX + w * p
         if (p > 0f) canvas.drawLine(padX, y, px, y, fill)
 
-        val xs = listOf(0.12f, 0.45f, 0.75f, 1f)
         for ((i, fx) in xs.withIndex()) {
             val x = padX + w * fx
             val done = i < passed
+            val s = nodeScale[i].value
             node.color = if (done) c(R.color.accent) else c(R.color.surface)
-            canvas.drawCircle(x, y, 14f * d, node)
+            canvas.drawCircle(x, y, 14f * d * s, node)
             if (!done) { node.color = c(R.color.outline); canvas.drawCircle(x, y, 14f * d, node); node.color = c(R.color.surface); canvas.drawCircle(x, y, 9f * d, node) }
             text.color = if (done) c(R.color.text_primary) else c(R.color.text_secondary)
             canvas.drawText(labels[i], x, y + 52f * d, text)
@@ -78,6 +92,4 @@ class RouteProgressView @JvmOverloads constructor(context: Context, attrs: Attri
         val h = (96f * density()).toInt()
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), resolveSize(h, heightMeasureSpec))
     }
-
-    @Suppress("unused") private val unused = RectF()
 }

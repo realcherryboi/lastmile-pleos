@@ -56,7 +56,8 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
-    implementation("org.maplibre.gl:android-sdk:13.6.1")   // 실제 지도 (벡터 타일: OpenFreeMap, 키 불필요)
+    implementation("org.maplibre.gl:android-sdk:13.6.1")
+    implementation("androidx.dynamicanimation:dynamicanimation:1.0.0")   // 스프링 모션 (Apple Fluid Interfaces 식 response/damping)   // 실제 지도 (벡터 타일: OpenFreeMap, 키 불필요)
 
     // Pleos Connect SDK (2026-10-19 release)
     implementation("ai.pleos.playground:Vehicle:2.3.2")

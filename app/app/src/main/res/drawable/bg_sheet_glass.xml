@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 음성 시트: 뒤 화면을 블러로 밀어내고 그 위에 올라오는 유리 시트 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item><shape android:shape="rectangle"><corners android:topLeftRadius="40dp" android:topRightRadius="40dp"/><gradient android:angle="270" android:startColor="#F7FFFFFF" android:endColor="#E6FFFFFF"/></shape></item>
+    <item><shape android:shape="rectangle"><corners android:topLeftRadius="40dp" android:topRightRadius="40dp"/><solid android:color="@android:color/transparent"/><stroke android:width="2dp" android:color="#D9FFFFFF"/></shape></item>
+</layer-list>

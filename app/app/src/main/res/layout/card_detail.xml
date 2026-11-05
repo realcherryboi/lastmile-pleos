@@ -3,6 +3,7 @@
     android:orientation="vertical" android:background="@drawable/bg_card" android:padding="@dimen/card_padding">
     <FrameLayout android:id="@+id/mapSlotIdle" android:layout_width="match_parent" android:layout_height="300dp" android:background="@drawable/bg_map" android:clipToOutline="true" android:layout_marginBottom="24dp">
         <kr.lastmile.app.ui.ZoneSketchView android:id="@+id/idleSketch" android:layout_width="match_parent" android:layout_height="match_parent"/>
+        <include layout="@layout/view_map_glass"/>
     </FrameLayout>
     <TextView android:id="@+id/detailCategory" style="@style/Chip" android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="@drawable/bg_chip_accent" android:textColor="@color/accent" android:minHeight="48dp" android:paddingStart="18dp" android:paddingEnd="18dp"/>
     <TextView android:id="@+id/detailName" style="@style/Text.Title" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:maxLines="2" android:ellipsize="end"/>

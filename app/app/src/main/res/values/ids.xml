@@ -1,0 +1,4 @@
+<resources>
+    <item name="tag_springs" type="id"/>
+    <item name="tag_hiding" type="id"/>
+</resources>

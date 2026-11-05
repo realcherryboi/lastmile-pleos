@@ -1,7 +1,14 @@
 package kr.lastmile.app.ui
 
 import android.content.Intent
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.os.Build
 import android.os.Bundle
+import android.view.MotionEvent
+import android.view.VelocityTracker
+import androidx.dynamicanimation.animation.DynamicAnimation
+import kotlin.math.roundToInt
 import android.view.LayoutInflater
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -62,17 +69,34 @@ class MainActivity : AppCompatActivity() {
     private var carBearing = 0f
     private var routeFor: String? = null
     private val tick = object : Runnable { override fun run() { renderCurbTimer(engine.ui.value); b.root.postDelayed(this, 1000) } }
+    private val dp get() = resources.displayMetrics.density
+    // --- 모션 상태 ---
+    private var lastSelId: String? = null
+    private var lastNextTitle = ""
+    private var lastSpokenText = ""
+    private var voiceShown = false
+    private var curbSnapAt = 0L
+    private lateinit var remainNum: SpringValue      // 남은 거리 숫자: 값이 바뀌면 카운팅(스프링)으로 이어진다
+    private lateinit var countdownNum: SpringValue
+    private lateinit var curbNum: SpringValue
+    /** 시트가 올라올 때 뒤 화면을 블러로 밀어낸다 (Apple: 모달은 배경을 뒤로 밀고 흐린다). API 31+ 에서만 블러, 그 외엔 스케일만. */
+    private val blur = SpringValue(0f, Motion.Default) { r ->
+        if (Build.VERSION.SDK_INT >= 31) b.content.setRenderEffect(if (r < 0.6f) null else RenderEffect.createBlurEffect(r, r, Shader.TileMode.CLAMP))
+    }
+    private fun pushBack(on: Boolean) { blur.animateTo(if (on) 26f else 0f); Motion.scale(b.content, if (on) 0.965f else 1f) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         b = ActivityMainBinding.inflate(layoutInflater)
         setContentView(b.root)
         engine = (application as LastMileApp).engine
+        Motion.init(this)
         startForegroundService(Intent(this, LastMileService::class.java))
 
         zoneMap = ZoneMap(this) { ok -> runOnUiThread { mapOk = ok; zoneMap.view.visibility = if (ok) View.VISIBLE else View.GONE; engine.status("지도", if (ok) "OpenFreeMap 스타일 로드" else "지도 로드 실패 → 스케치 폴백") } }
         buildRows()
         bindIdle(); bindDrive(); bindArrived(); bindVoice()
+        for (slot in mapSlots()) { val rc = slot.findViewById<View>(R.id.recenterButton); rc.setOnClickListener { zoneMap.recenter() }; Pressable.attach(rc) }
         b.settingsButton.setOnClickListener { showSettings() }
         Pressable.attach(b.settingsButton)
 
@@ -87,6 +111,12 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() { zoneMap.onStop(); super.onStop() }
     override fun onLowMemory() { super.onLowMemory(); zoneMap.onLowMemory() }
     override fun onDestroy() { ux?.stop(); zoneMap.onDestroy(); super.onDestroy() }
+
+    private fun mapSlots() = listOf(b.pageIdle.root.findViewById<android.widget.FrameLayout>(R.id.mapSlotIdle), b.pageDrive.root.findViewById(R.id.mapSlotDrive), b.pageArrived.root.findViewById(R.id.mapSlotArrived))
+    private fun glass(slot: View, icon: Int, text: String) {
+        val t = slot.findViewById<TextView>(R.id.glassText); slot.findViewById<ImageView>(R.id.glassIcon).setImageResource(icon)
+        if (t.text.toString() != text) { t.text = text; Motion.pop(slot.findViewById(R.id.glassTitle), 0.94f) }
+    }
 
     /** 하나의 MapView 를 현재 페이지의 지도 슬롯으로 옮긴다 (스케치가 그 아래에 폴백으로 깔려 있다). */
     private fun placeMap(page: View) {
@@ -177,6 +207,9 @@ class MainActivity : AppCompatActivity() {
         ask.setOnClickListener { engine.askVoice() }
         end.setOnClickListener { engine.endGuidance() }
         Pressable.attach(ask, end)
+        val remain = root.findViewById<TextView>(R.id.driveRemain); val cd = root.findViewById<TextView>(R.id.nextCountdown)
+        remainNum = SpringValue(0f) { remain.text = fmtMeters(it.roundToInt().coerceAtLeast(0)) }
+        countdownNum = SpringValue(0f) { cd.text = fmtMeters(it.roundToInt().coerceAtLeast(0)) }
         fact(root, R.id.factCurb, R.drawable.ic_stop_sign, getString(R.string.parking_curb))
         fact(root, R.id.factValet, R.drawable.ic_person, getString(R.string.parking_valet))
         fact(root, R.id.factParking, R.drawable.ic_parking, getString(R.string.parking_lot))
@@ -213,6 +246,8 @@ class MainActivity : AppCompatActivity() {
         val done = b.pageArrived.root.findViewById<Button>(R.id.doneButton)
         done.setOnClickListener { engine.done() }
         Pressable.attach(done)
+        val bar = b.pageArrived.root.findViewById<ProgressBar>(R.id.curbProgress)
+        curbNum = SpringValue(1000f) { bar.progress = it.roundToInt() }
     }
 
     private fun renderCurbTimer(s: UiState) {
@@ -227,7 +262,8 @@ class MainActivity : AppCompatActivity() {
         val left = (total - elapsed).coerceAtLeast(0)
         timer.text = "%d:%02d".format(left / 60, left % 60)
         timer.setTextColor(getColor(if (left <= 60) R.color.negative else R.color.text_primary))
-        bar.progress = if (total > 0) (left * 1000 / total) else 0
+        val target = (if (total > 0) (left * 1000f / total) else 0f)
+        if (curbSnapAt != s.arrivedAtMs) { curbSnapAt = s.arrivedAtMs; curbNum.snapTo(target) } else curbNum.animateTo(target)
     }
 
     // ---------- VOICE ----------
@@ -241,6 +277,28 @@ class MainActivity : AppCompatActivity() {
         send.setOnClickListener { submit() }
         typed.setOnEditorActionListener { _, a, _ -> if (a == EditorInfo.IME_ACTION_SEND) { submit(); true } else false }
         Pressable.attach(send, v.findViewById(R.id.voiceClose))
+
+        // 시트 끌어내리기: 손가락과 1:1, 위로는 러버밴드, 놓으면 속도를 이어받아 투영 지점으로 결정(Apple Fluid Interfaces).
+        val panel = v.findViewById<View>(R.id.voicePanel); val scrim = v.findViewById<View>(R.id.voiceScrim)
+        var downY = 0f; var startTy = 0f; var tracker: VelocityTracker? = null
+        panel.setOnTouchListener { _, e ->
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> { tracker?.recycle(); tracker = VelocityTracker.obtain().also { it.addMovement(e) }; downY = e.rawY; startTy = panel.translationY; Motion.cancel(panel, DynamicAnimation.TRANSLATION_Y) }
+                MotionEvent.ACTION_MOVE -> {
+                    tracker?.addMovement(e)
+                    val raw = startTy + (e.rawY - downY)
+                    val ty = if (raw < 0f) Motion.rubberband(raw, panel.height.toFloat()) else raw
+                    panel.translationY = ty; scrim.alpha = 1f - (ty / panel.height).coerceIn(0f, 1f)
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    val vt = tracker; vt?.addMovement(e); vt?.computeCurrentVelocity(1000); val vy = vt?.yVelocity ?: 0f; vt?.recycle(); tracker = null
+                    val projected = panel.translationY + Motion.project(vy)
+                    if (e.actionMasked == MotionEvent.ACTION_UP && (projected > panel.height * 0.45f || vy > 1500f)) { hideVoice(velocity = vy); engine.cancelVoice() }
+                    else { Motion.spring(panel, DynamicAnimation.TRANSLATION_Y, 0f, Motion.Sheet, velocity = vy); Motion.spring(scrim, DynamicAnimation.ALPHA, 1f) }
+                }
+            }
+            true
+        }
     }
 
     // ---------- RENDER ----------
@@ -254,7 +312,10 @@ class MainActivity : AppCompatActivity() {
         b.stateChip.setTextColor(getColor(when (s.state) { TripState.IDLE -> R.color.text_primary; TripState.ARRIVED, TripState.DONE -> R.color.success; else -> R.color.accent }))
 
         val page = when (s.state) { TripState.IDLE -> b.pageIdle.root; TripState.ARRIVED, TripState.DONE -> b.pageArrived.root; else -> b.pageDrive.root }
-        showPage(page, animate = lastState != null && lastState != s.state)
+        val changed = lastState != null && lastState != s.state
+        showPage(page, animate = changed)
+        if (changed) Motion.pop(b.stateChip, 0.86f)
+        if (changed && s.state == TripState.ARRIVED) b.pageArrived.root.findViewById<View>(R.id.arrivedBadge).let { Motion.pop(it, 0.4f) }
         lastState = s.state
 
         renderIdle(s); renderDrive(s); renderArrived(s); renderVoice(s)
@@ -273,6 +334,10 @@ class MainActivity : AppCompatActivity() {
         val dest = if (idle) s.selected else s.destination
         val arrived = s.state == TripState.ARRIVED || s.state == TripState.DONE
         zoneMap.update(dest, s.hereLat, s.hereLng, carBearing, arrived, includeCar = !idle)
+        val slots = mapSlots()
+        glass(slots[0], R.drawable.ic_flag, "도착 구역 미리보기")
+        glass(slots[1], R.drawable.ic_flag, s.destination?.let { "도착 구역 · ${it.name}" } ?: getString(R.string.zone_title))
+        glass(slots[2], R.drawable.ic_walk, s.destination?.let { "만남 · ${it.meetingPoint}" } ?: getString(R.string.zone_title))
         if (!idle && !arrived) fetchRoute(s)
         if (s.state == TripState.IDLE) routeFor = null
     }
@@ -282,9 +347,18 @@ class MainActivity : AppCompatActivity() {
         for ((id, v) in rows) v.isSelected = s.selected?.id == id
         for (d in engine.repository.all()) rows[d.id]?.findViewById<TextView>(R.id.rowDistance)?.text = distanceText(s, d)
         val sel = s.selected
-        root.findViewById<View>(R.id.detailScroll)?.visibility = if (sel != null) View.VISIBLE else View.GONE
-        root.findViewById<View>(R.id.detailCard).visibility = if (sel != null) View.VISIBLE else View.GONE
-        root.findViewById<View>(R.id.detailEmpty).visibility = if (sel != null) View.GONE else View.VISIBLE
+        val empty = root.findViewById<View>(R.id.detailEmpty)
+        val land = empty is android.view.ViewGroup          // 가로: detailScroll 이 상세 카드만 담는다 / 세로: 카드가 목록 위에 끼어든다
+        val container = if (land) root.findViewById(R.id.detailScroll) else root.findViewById<View>(R.id.detailCard)
+        if (land) root.findViewById<View>(R.id.detailCard).visibility = View.VISIBLE
+        if (sel == null) { lastSelId = null; Motion.setVisible(container, false, fromY = 40 * dp, fromScale = 0.98f); if (land) Motion.setVisible(empty, true) else empty.visibility = View.GONE }
+        else if (sel.id != lastSelId) {
+            lastSelId = sel.id
+            if (land) Motion.setVisible(empty, false)
+            if (container.visibility == View.VISIBLE && container.getTag(R.id.tag_hiding) != true) { container.alpha = 0.55f; container.translationY = 20 * dp; container.scaleX = 0.985f; container.scaleY = 0.985f }   // 다른 목적지로 바꿈: 카드가 다시 "도착"한다
+            Motion.setVisible(container, true, fromY = 40 * dp, fromScale = 0.98f)
+            Motion.appear(container, fromY = 40 * dp, fromScale = 0.98f)
+        }
         if (sel != null) {
             root.findViewById<TextView>(R.id.detailCategory).text = sel.category
             root.findViewById<TextView>(R.id.detailName).text = sel.name
@@ -307,27 +381,33 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderDrive(s: UiState) {
         val d = s.destination; val dr = b.pageDrive.root
-        dr.findViewById<TextView>(R.id.driveDestination).text = d?.name ?: ""
-        dr.findViewById<TextView>(R.id.driveRemain).text = if (s.remainMeters < 0) "—" else fmtMeters(s.remainMeters)
+        if (s.remainMeters < 0) { remainNum.snapTo(0f); dr.findViewById<TextView>(R.id.driveRemain).text = "—" }
+        else if (remainNum.target <= 0f || s.state == TripState.ARMED && lastState != s.state) remainNum.snapTo(s.remainMeters.toFloat()) else remainNum.animateTo(s.remainMeters.toFloat())
         dr.findViewById<TextView>(R.id.driveEta).text = if (s.remainSec > 0) getString(R.string.eta_fmt, maxOf(1, s.remainSec / 60)) else "—"
         dr.findViewById<TextView>(R.id.driveClock).text = if (s.remainSec > 0) clock.format(Date(System.currentTimeMillis() + s.remainSec * 1000L)) else "—"
         dr.findViewById<RouteProgressView>(R.id.routeProgress).apply { remainMeters = s.remainMeters; passed = passedOf(s.state) }
         dr.findViewById<ZoneSketchView>(R.id.zoneSketch).apply { destination = d; arrived = false }
 
         val spoken = dr.findViewById<TextView>(R.id.driveGuidance)
-        spoken.text = s.lastSpoken.ifBlank { if (s.state == TripState.ARMED) "내비 안내를 기다리고 있어요" else "" }
-        dr.findViewById<View>(R.id.spokenRow).visibility = if (spoken.text.isBlank()) View.INVISIBLE else View.VISIBLE
+        val spokenText = s.lastSpoken.ifBlank { if (s.state == TripState.ARMED) "내비 안내를 기다리고 있어요" else "" }
+        val spokenRow = dr.findViewById<View>(R.id.spokenRow)
+        if (spokenText != lastSpokenText) { lastSpokenText = spokenText; spoken.text = spokenText; if (spokenText.isNotBlank()) { spokenRow.alpha = 0f; spokenRow.translationY = 12 * dp; Motion.appear(spokenRow) } }
+        if (spokenText.isBlank()) spokenRow.visibility = View.INVISIBLE
 
         val banner = dr.findViewById<View>(R.id.stoppingBanner)
-        banner.visibility = if (s.state == TripState.STOPPING) View.VISIBLE else View.GONE
+        Motion.setVisible(banner, s.state == TripState.STOPPING, fromY = -20 * dp)
         if (d != null) {
             val n = nextOf(s, d)
             dr.findViewById<ImageView>(R.id.nextIcon).setImageResource(n.icon)
             dr.findViewById<TextView>(R.id.nextTitle).text = n.title
             dr.findViewById<TextView>(R.id.nextPreview).text = n.preview
+            if (n.title != lastNextTitle) {   // 다음 이정표가 바뀐 순간: 카드가 다시 "도착"하고 아이콘이 팝
+                val firstShow = lastNextTitle.isEmpty(); lastNextTitle = n.title
+                if (!firstShow) { Motion.pop(dr.findViewById(R.id.nextCard), 0.965f); Motion.pop(dr.findViewById<View>(R.id.nextIcon).parent as View, 0.7f) }
+            }
             val cd = dr.findViewById<TextView>(R.id.nextCountdown)
-            cd.visibility = if (n.inMeters >= 0) View.VISIBLE else View.GONE
-            cd.text = fmtMeters(n.inMeters.coerceAtLeast(0))
+            Motion.setVisible(cd, n.inMeters >= 0, fromScale = 0.8f)
+            if (n.inMeters >= 0) { if (cd.getTag(R.id.tag_hiding) == true || countdownNum.target <= 0f) countdownNum.snapTo(n.inMeters.toFloat()) else countdownNum.animateTo(n.inMeters.toFloat()) } else countdownNum.snapTo(0f)
             dr.findViewById<TextView>(R.id.stoppingHint).text = if (d.curbsideAllowed) "여기는 ${d.curbsideLimitMin}분까지 세울 수 있어요" else "정차 금지 구역이에요 · ${d.parkingName}로 안내"
             setFact(dr, R.id.factCurb, curbText(d))
             dr.findViewById<View>(R.id.factCurb).findViewById<ImageView>(R.id.factIcon).setImageResource(if (d.curbsideAllowed) R.drawable.ic_clock else R.drawable.ic_stop_sign)
@@ -358,35 +438,65 @@ class MainActivity : AppCompatActivity() {
             ar.findViewById<TextView>(R.id.parkName).text = d.parkingName.ifBlank { "주차장 정보 없음" }
             ar.findViewById<TextView>(R.id.parkFee).text = d.parkingFee
             ar.findViewById<TextView>(R.id.parkHint).text = d.parkingHint
-            ar.findViewById<TextView>(R.id.arrivedMeet).text = "만남 · ${d.meetingPoint}"
             ar.findViewById<ZoneSketchView>(R.id.arrivedSketch).apply { destination = d; arrived = true }
             renderCurbTimer(s)
         }
         val card = ar.findViewById<View>(R.id.arrivedMessageCard)
-        card.visibility = if ("arrived" in s.messagesSent) View.VISIBLE else View.GONE
+        Motion.setVisible(card, "arrived" in s.messagesSent, fromY = 16 * dp)
         ar.findViewById<TextView>(R.id.arrivedMessageText).text = "${s.recipientName.ifBlank { s.recipientPhone }}에게 보냄 · ${s.lastMessage}"
     }
 
     private fun renderVoice(s: UiState) {
         val vs = b.voiceSheet.root
-        val wantVoice = s.listening || (s.lastUtterance.isNotBlank() && vs.visibility == View.VISIBLE)
-        vs.visibility = if (wantVoice) View.VISIBLE else View.GONE
+        val wantVoice = s.listening || (s.lastUtterance.isNotBlank() && voiceShown)
+        if (wantVoice && !voiceShown) showVoice() else if (!wantVoice && voiceShown) hideVoice()
         vs.findViewById<TextView>(R.id.voiceTitle).text = if (s.listening) getString(R.string.listening) else "\"${s.lastUtterance}\""
         val ans = vs.findViewById<TextView>(R.id.voiceAnswer)
         ans.visibility = if (!s.listening && s.lastUtterance.isNotBlank()) View.VISIBLE else View.GONE
         ans.text = s.lastSpoken
         val typedRow = vs.findViewById<View>(R.id.voiceTypedRow)
         typedRow.visibility = if (s.listening && engine.voice is TextVoiceInput && !noKeyboard) View.VISIBLE else View.GONE
-        if (!s.listening && s.lastUtterance.isNotBlank() && vs.visibility == View.VISIBLE) vs.postDelayed({ if (!engine.ui.value.listening) vs.visibility = View.GONE }, 5000)
+        if (!s.listening && s.lastUtterance.isNotBlank() && voiceShown) vs.postDelayed({ if (!engine.ui.value.listening && voiceShown) hideVoice() }, 5000)
     }
 
+    /** 음성 시트: 아래에서 스프링(damping 0.82)으로 올라오고, 뒤 화면은 블러·축소로 밀려난다. 같은 경로로 내려간다. */
+    private fun showVoice() {
+        voiceShown = true
+        val vs = b.voiceSheet.root; val panel = vs.findViewById<View>(R.id.voicePanel); val scrim = vs.findViewById<View>(R.id.voiceScrim)
+        vs.visibility = View.VISIBLE; panel.alpha = 0f
+        vs.post { if (!voiceShown) return@post; panel.alpha = 1f; panel.translationY = panel.height.toFloat(); scrim.alpha = 0f
+            Motion.spring(panel, DynamicAnimation.TRANSLATION_Y, 0f, Motion.Sheet); Motion.spring(scrim, DynamicAnimation.ALPHA, 1f) }
+        pushBack(true)
+    }
+    private fun hideVoice(velocity: Float? = null) {
+        if (!voiceShown) return
+        voiceShown = false
+        val vs = b.voiceSheet.root; val panel = vs.findViewById<View>(R.id.voicePanel); val scrim = vs.findViewById<View>(R.id.voiceScrim)
+        Motion.spring(scrim, DynamicAnimation.ALPHA, 0f)
+        Motion.spring(panel, DynamicAnimation.TRANSLATION_Y, panel.height.toFloat(), Motion.Sheet, velocity) { if (!voiceShown) vs.visibility = View.GONE }
+        pushBack(false)
+    }
+
+    /**
+     * 페이지 전환. 앞으로(출발→안내→도착)는 새 화면이 아래에서 올라오고 이전 화면은 뒤로 물러난다.
+     * 뒤로(→출발 전)는 그 역경로: 이전 화면이 아래로 내려가고 새 화면이 뒤에서 앞으로 온다. (같은 길로 들어오고 나간다)
+     */
     private fun showPage(page: View, animate: Boolean) {
         if (shownPage === page) return
         val prev = shownPage; shownPage = page
-        page.alpha = if (animate) 0f else 1f; page.visibility = View.VISIBLE
-        if (animate) page.animate().alpha(1f).setDuration(200).start()
-        for (p in listOf(b.pageIdle.root, b.pageDrive.root, b.pageArrived.root)) if (p !== page) p.visibility = View.GONE
-        prev?.alpha = 1f
+        val forward = page !== b.pageIdle.root
+        val dy = 56 * dp
+        page.setTag(R.id.tag_hiding, null)
+        for (p in listOf(b.pageIdle.root, b.pageDrive.root, b.pageArrived.root)) if (p !== page && p !== prev) { Motion.cancel(p); p.visibility = View.GONE }
+        if (animate && Motion.enabled && prev != null) {
+            page.visibility = View.VISIBLE; page.alpha = 0f
+            page.translationY = if (forward) dy else 0f; val sc = if (forward) 0.985f else 0.955f; page.scaleX = sc; page.scaleY = sc
+            Motion.appear(page)
+            Motion.disappear(prev, toY = if (forward) -dy * 0.35f else dy, toScale = if (forward) 0.965f else 1f)
+        } else {
+            Motion.cancel(page); page.alpha = 1f; page.translationY = 0f; page.scaleX = 1f; page.scaleY = 1f; page.visibility = View.VISIBLE
+            prev?.let { Motion.cancel(it); it.visibility = View.GONE; it.alpha = 1f; it.translationY = 0f; it.scaleX = 1f; it.scaleY = 1f }
+        }
         placeMap(page)
     }
 
@@ -405,6 +515,7 @@ class MainActivity : AppCompatActivity() {
         ver.text = getString(R.string.version_fmt, BuildConfig.VERSION_NAME) + if (BuildConfig.USE_MOCK) " · mock" else ""
         ver.setOnClickListener { if (++versionTaps >= 5) { versionTaps = 0; dlg.dismiss(); showDev() } }
         Pressable.attach(save)
+        dlg.setOnDismissListener { pushBack(false) }; pushBack(true)
         dlg.setContentView(v); dlg.behavior.state = BottomSheetBehavior.STATE_EXPANDED; dlg.show()
     }
 
@@ -428,7 +539,7 @@ class MainActivity : AppCompatActivity() {
         v.findViewById<View>(R.id.btnGeofence).setOnClickListener { loc?.enter() }
         val src = v.findViewById<TextView>(R.id.devSources); val log = v.findViewById<TextView>(R.id.devLog)
         val job = lifecycleScope.launch { engine.ui.collect { s -> src.text = s.sources.entries.joinToString("  ·  ") { "${it.key}: ${it.value}" }; log.text = s.log.joinToString("\n") } }
-        dlg.setOnDismissListener { job.cancel() }
+        dlg.setOnDismissListener { job.cancel(); pushBack(false) }; pushBack(true)
         dlg.setContentView(v); dlg.behavior.state = BottomSheetBehavior.STATE_EXPANDED; dlg.show()
     }
 }
