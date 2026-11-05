@@ -22,7 +22,7 @@ $ADB shell am force-stop $APP; $ADB shell am start -n $APP/.ui.MainActivity >/de
 
 front(){ $ADB shell input tap 1386 1370; sleep 1.5; $ADB shell input tap 1363 860; sleep 2; }   # GNB 앱 라이브러리 → 라스트마일 아이콘
 step "목적지 선택 (한식당 소담) → 안내 시작 → 내비 경로 요청 → BRIEF_3KM"
-$ADB shell input tap 1043 463; sleep 1; $ADB shell input tap 2179 1212; sleep 9
+$ADB shell input tap 1364 450; sleep 1.5; $ADB shell input tap 2179 1212; sleep 9   # 목록 첫 행 → 안내 시작
 front   # 내비가 앞으로 오므로 앱 복귀
 
 step "접근: 1km → 500m"
@@ -37,6 +37,6 @@ $ADB emu geo fix 127.1030 37.4010 >/dev/null; sleep 7
 $ADB emu geo fix 127.1036 37.3999 >/dev/null; sleep 7
 $ADB emu geo fix 127.1038 37.3997 >/dev/null; sleep 5
 
-step "기어 P → ARRIVED"
-curl -s -X PUT "$VC/vehicle/gear?gear=Park" >/dev/null; sleep 4
+step "기어 P → ARRIVED (정차 금지 안내 + 도착 구역 스케치)"
+curl -s -X PUT "$VC/vehicle/gear?gear=Park" >/dev/null; sleep 8
 $ADB exec-out screencap -p > /tmp/lastmile_demo_end.png && echo "스크린샷: /tmp/lastmile_demo_end.png"

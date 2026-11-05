@@ -29,7 +29,7 @@
 - `apk/김상헌_라스트마일_release.apk` — `cd app && ./gradlew assembleSdkRelease` 로 생성한 서명(v3) 빌드. 서명 키·비밀번호는 `app/keystore/`, `app/keystore.properties`(비공개)
 
 ## 시연 영상
-- `docs/video/lastmile_demo_1080p.mp4` (73초, 무음): 목적지 선택 → 내비 경로 안내 시작·2.6 km 브리핑 → 1 km·300 m 안내 → 기어 P 도착 알림
+- `docs/video/lastmile_demo_1080p.mp4` (100초, 무음): 목적지 목록·상세 → 안내 시작·2.6 km 브리핑 → 다음 안내 카드·진행 바·ETA → 1 km·300 m 안내 → 기어 P 도착(정차 금지·도착 구역 스케치)
 
 ## 저장소 구조
 ```

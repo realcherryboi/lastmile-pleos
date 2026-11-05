@@ -37,6 +37,9 @@ data class UiState(
     val lastUtterance: String = "",
     val sources: Map<String, String> = emptyMap(),
     val log: List<String> = emptyList(),
+    val hereLat: Double = Double.NaN,            // 마지막 위치 (목록 거리 표시용)
+    val hereLng: Double = Double.NaN,
+    val arrivedAtMs: Long = 0L,                  // ARRIVED 진입 시각 (정차 타이머)
 )
 
 /**
@@ -61,6 +64,10 @@ class TripEngine private constructor(
     private val log = ArrayDeque<String>()
     private var started = false
     private var unknownName: String? = null
+    /** 완료한 목적지 id. 내비가 같은 목적지를 다시 알려도(앱 재시작 포함) 재시작하지 않도록 저장한다. */
+    private var finishedId: String?
+        get() = prefs.getString("finished", null)
+        set(v) { prefs.edit().putString("finished", v).apply() }
     private var lastNaviRemainAt = 0L        // 내비 남은 거리 "값이 바뀐" 시각
     private var lastNaviRemain = -1
     private var insideRadius = false
@@ -76,9 +83,10 @@ class TripEngine private constructor(
                 val d = repository.all().firstOrNull { it.name == name }
                     ?: repository.all().filter { dist(it, lat, lng) < 300.0 }.minByOrNull { dist(it, lat, lng) }
                 when {
+                    d != null && d.id == finishedId -> Unit   // 방금 완료한 목적지 (내비 경로 취소 전 재통지)
                     d == null -> if (name != unknownName) { unknownName = name; addLog("목적지 '$name' — 데이터 없음 (내비 좌표 ${"%.4f".format(lat)}, ${"%.4f".format(lng)})") }
                     d.id == machine.destination?.id -> Unit   // 같은 목적지 재통지는 무시
-                    else -> { dispatch(TripEvent.DestinationSet(d)); location.watch(d); addLog("목적지: ${d.name}") }
+                    else -> { finishedId = null; dispatch(TripEvent.DestinationSet(d)); location.watch(d); addLog("목적지: ${d.name}") }
                 }
             }
             override fun onRemainDistance(meters: Int, remainSec: Int) = post {
@@ -102,6 +110,7 @@ class TripEngine private constructor(
         runCatching { location.start(object : LocationSource.Listener {
             override fun onGeofence(entered: Boolean) = post { addLog("지오펜스: ${if (entered) "진입" else "이탈"}"); dispatch(TripEvent.GeofenceEnter(entered)) }
             override fun onLocation(lat: Double, lng: Double) = post {
+                _ui.value = _ui.value.copy(hereLat = lat, hereLng = lng)
                 val d = machine.destination ?: return@post
                 val now = System.currentTimeMillis()
                 val meters = dist(d, lat, lng).toInt()
@@ -130,7 +139,7 @@ class TripEngine private constructor(
     fun selectDestination(d: Destination) { _ui.value = _ui.value.copy(selected = d) }
 
     /** 내비에 경로 요청. 모의 소스는 즉시, NaviHelper 는 내비가 DestinationInfo 로 되돌려 줄 때 ARMED 가 된다. */
-    fun startGuidance() { val d = _ui.value.selected ?: return; addLog("안내 시작 요청: ${d.name}"); navi.requestRoute(d) }
+    fun startGuidance() { val d = _ui.value.selected ?: return; finishedId = null; addLog("안내 시작 요청: ${d.name}"); navi.requestRoute(d) }
 
     fun setMeetingMode(on: Boolean) {
         if (on && sender.recipient.isBlank()) { addLog("마중 모드: 수신자 없음"); _ui.value = _ui.value.copy(meetingMode = false); return }
@@ -149,8 +158,10 @@ class TripEngine private constructor(
     /** 음성 인식이 없는 환경(에뮬레이터)용 텍스트 경로 */
     fun submitUtterance(text: String) = post { onUtterance(text) }
 
-    fun reset() = post { insideRadius = false; dispatch(TripEvent.Reset); _ui.value = _ui.value.copy(remainMeters = -1, remainSec = -1, selected = null, messagesSent = emptyList(), lastMessage = "", lastSpoken = "") }
-    fun endGuidance() { navi.cancelRoute(); reset() }
+    fun reset() = post { insideRadius = false; dispatch(TripEvent.Reset); _ui.value = _ui.value.copy(remainMeters = -1, remainSec = -1, selected = null, messagesSent = emptyList(), lastMessage = "", lastSpoken = "", arrivedAtMs = 0L) }
+    fun endGuidance() { finishedId = machine.destination?.id; navi.cancelRoute(); reset() }
+    /** 도착 화면의 완료: 내비 경로는 건드리지 않고(내비가 앞으로 튀어나오지 않게) 같은 목적지 재통지만 무시 */
+    fun done() { finishedId = machine.destination?.id; reset() }
 
     private fun onUtterance(text: String) {
         val d = machine.destination
@@ -169,7 +180,7 @@ class TripEngine private constructor(
         for (a in machine.handle(event)) when (a) {
             is TripAction.Speak -> say(a.text)
             is TripAction.Notify -> sender.send(a.text) { addLog("메시지(${a.kind}): $it") }.also { _ui.value = _ui.value.copy(lastMessage = a.text, messagesSent = _ui.value.messagesSent + a.kind) }
-            is TripAction.StateChanged -> addLog("상태 ${a.from} → ${a.to}")
+            is TripAction.StateChanged -> { addLog("상태 ${a.from} → ${a.to}"); if (a.to == TripState.ARRIVED) _ui.value = _ui.value.copy(arrivedAtMs = System.currentTimeMillis()) }
         }
         _ui.value = _ui.value.copy(state = machine.state, destination = machine.destination)
     }

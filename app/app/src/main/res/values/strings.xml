@@ -3,7 +3,7 @@
     <string name="notif_channel">라스트마일 주행 보조</string>
     <string name="notif_title">라스트마일 실행 중</string>
     <string name="idle_title">어디로 데리러 가세요?</string>
-    <string name="idle_subtitle">출발 전에 목적지를 고르면, 도착 3km 전부터 음성으로 안내해요</string>
+    <string name="idle_subtitle">목적지</string>
     <string name="meeting_mode">마중 알림</string>
     <string name="meeting_off">기다리는 사람에게 도착 소식을 자동으로 보내요</string>
     <string name="meeting_on_fmt">%s에게 5분 전·도착 시 자동 전송</string>
@@ -32,4 +32,16 @@
     <string name="remain_fmt_m">%d m</string>
     <string name="eta_fmt">약 %d분</string>
     <string name="version_fmt">버전 %s</string>
+    <string name="search_hint">목적지 검색</string>
+    <string name="detail_empty">목적지를 고르면\n정차·주차·만남 지점을 미리 볼 수 있어요</string>
+    <string name="next_briefing">다음 안내</string>
+    <string name="eta_remain">남은 거리</string>
+    <string name="eta_time">남은 시간</string>
+    <string name="eta_clock">도착 예정</string>
+    <string name="zone_title">도착 구역</string>
+    <string name="meeting_point">만남</string>
+    <string name="curb_allowed_title">정차 가능 시간</string>
+    <string name="curb_forbidden_title">정차 금지 구역</string>
+    <string name="distance_fmt_km">%.1f km</string>
+    <string name="distance_fmt_m">%d m</string>
 </resources>

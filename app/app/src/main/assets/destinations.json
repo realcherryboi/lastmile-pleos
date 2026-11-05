@@ -1,29 +1,206 @@
 {
-  "destinations": [
-    {"id": "restaurant", "name": "한식당 소담", "category": "식당", "lat": 37.3997, "lng": 127.1038, "arrivalRadiusM": 80,
-     "curbsideAllowed": false, "curbsideLimitMin": 0, "valet": false,
-     "parkingName": "뒤편 공영주차장", "parkingFee": "10분 300원", "parkingHint": "다음 우회전 후 바로 주차장 입구예요.",
-     "meetingPoint": "정문 앞",
-     "qa": {"정문": "정문 앞은 단속 구역이에요. 주차장 입구가 정문에서 30미터 뒤예요."}},
-    {"id": "hospital", "name": "성남시립병원", "category": "병원", "lat": 37.4312, "lng": 127.1291, "arrivalRadiusM": 120,
-     "curbsideAllowed": true, "curbsideLimitMin": 5, "valet": false,
-     "parkingName": "지하주차장", "parkingFee": "30분 무료, 이후 10분 500원", "parkingHint": "응급실 쪽 말고 본관 정문 앞 승하차 구역으로 가세요.",
-     "meetingPoint": "본관 정문 승하차 구역",
-     "qa": {"응급": "응급실 앞은 구급차 전용이에요. 본관 정문으로 가세요."}},
-    {"id": "airport", "name": "인천공항 제1터미널 입국장", "category": "공항", "lat": 37.4489, "lng": 126.4505, "arrivalRadiusM": 200,
-     "curbsideAllowed": true, "curbsideLimitMin": 3, "valet": false,
-     "parkingName": "단기주차장", "parkingFee": "30분 무료", "parkingHint": "1층 5번 출구 앞 커브사이드로 진입하세요.",
-     "meetingPoint": "1층 5번 출구 앞",
-     "qa": {"얼마나": "커브사이드는 3분까지예요. 더 기다리면 단기주차장 30분 무료예요."}},
-    {"id": "school", "name": "소담초등학교", "category": "학교", "lat": 37.4052, "lng": 127.0991, "arrivalRadiusM": 80,
-     "curbsideAllowed": false, "curbsideLimitMin": 0, "valet": false,
-     "parkingName": "후문 공영주차장", "parkingFee": "20분 무료", "parkingHint": "정문은 어린이보호구역이에요. 후문 쪽으로 돌아가세요.",
-     "meetingPoint": "후문",
-     "qa": {"정문": "정문 앞은 어린이보호구역이라 정차하면 과태료예요. 후문으로 가세요."}},
-    {"id": "apartment", "name": "래미안 소담 아파트", "category": "아파트", "lat": 37.3921, "lng": 127.1120, "arrivalRadiusM": 100,
-     "curbsideAllowed": true, "curbsideLimitMin": 10, "valet": false,
-     "parkingName": "방문자 주차", "parkingFee": "1시간 무료", "parkingHint": "정문 차단기에서 방문 세대 호출이 필요해요.",
-     "meetingPoint": "정문 차단기 앞",
-     "qa": {"차단기": "차단기에서 호출 버튼을 누르면 세대에서 열어 줘요."}}
-  ]
+ "destinations": [
+  {
+   "id": "restaurant",
+   "name": "한식당 소담",
+   "category": "식당",
+   "lat": 37.3997,
+   "lng": 127.1038,
+   "arrivalRadiusM": 80,
+   "curbsideAllowed": false,
+   "curbsideLimitMin": 0,
+   "valet": false,
+   "parkingName": "뒤편 공영주차장",
+   "parkingFee": "10분 300원",
+   "parkingHint": "다음 우회전 후 바로 주차장 입구예요.",
+   "meetingPoint": "정문 앞",
+   "qa": {
+    "정문": "정문 앞은 단속 구역이에요. 주차장 입구가 정문에서 30미터 뒤예요."
+   },
+   "address": "경기 성남시 분당구 소담로 12",
+   "zone": [
+    {
+     "type": "entrance",
+     "label": "정문",
+     "offsetM": 0,
+     "note": "정차 금지"
+    },
+    {
+     "type": "parking",
+     "label": "공영주차장 입구",
+     "offsetM": 30,
+     "note": "10분 300원"
+    },
+    {
+     "type": "meeting",
+     "label": "만남 · 정문 앞",
+     "offsetM": 0
+    }
+   ]
+  },
+  {
+   "id": "hospital",
+   "name": "성남시립병원",
+   "category": "병원",
+   "lat": 37.4312,
+   "lng": 127.1291,
+   "arrivalRadiusM": 120,
+   "curbsideAllowed": true,
+   "curbsideLimitMin": 5,
+   "valet": false,
+   "parkingName": "지하주차장",
+   "parkingFee": "30분 무료, 이후 10분 500원",
+   "parkingHint": "응급실 쪽 말고 본관 정문 앞 승하차 구역으로 가세요.",
+   "meetingPoint": "본관 정문 승하차 구역",
+   "qa": {
+    "응급": "응급실 앞은 구급차 전용이에요. 본관 정문으로 가세요."
+   },
+   "address": "경기 성남시 수정구 수정로 171",
+   "zone": [
+    {
+     "type": "entrance",
+     "label": "본관 정문",
+     "offsetM": 0,
+     "note": "5분 정차"
+    },
+    {
+     "type": "parking",
+     "label": "지하주차장 입구",
+     "offsetM": 60,
+     "note": "30분 무료"
+    },
+    {
+     "type": "meeting",
+     "label": "만남 · 승하차 구역",
+     "offsetM": 0
+    },
+    {
+     "type": "noentry",
+     "label": "응급실",
+     "offsetM": -80,
+     "note": "구급차 전용"
+    }
+   ]
+  },
+  {
+   "id": "airport",
+   "name": "인천공항 제1터미널 입국장",
+   "category": "공항",
+   "lat": 37.4489,
+   "lng": 126.4505,
+   "arrivalRadiusM": 200,
+   "curbsideAllowed": true,
+   "curbsideLimitMin": 3,
+   "valet": false,
+   "parkingName": "단기주차장",
+   "parkingFee": "30분 무료",
+   "parkingHint": "1층 5번 출구 앞 커브사이드로 진입하세요.",
+   "meetingPoint": "1층 5번 출구 앞",
+   "qa": {
+    "얼마나": "커브사이드는 3분까지예요. 더 기다리면 단기주차장 30분 무료예요."
+   },
+   "address": "인천 중구 공항로 272",
+   "zone": [
+    {
+     "type": "entrance",
+     "label": "5번 출구",
+     "offsetM": 0,
+     "note": "3분 정차"
+    },
+    {
+     "type": "parking",
+     "label": "단기주차장",
+     "offsetM": 150,
+     "note": "30분 무료"
+    },
+    {
+     "type": "meeting",
+     "label": "만남 · 5번 출구 앞",
+     "offsetM": 0
+    }
+   ]
+  },
+  {
+   "id": "school",
+   "name": "소담초등학교",
+   "category": "학교",
+   "lat": 37.4052,
+   "lng": 127.0991,
+   "arrivalRadiusM": 80,
+   "curbsideAllowed": false,
+   "curbsideLimitMin": 0,
+   "valet": false,
+   "parkingName": "후문 공영주차장",
+   "parkingFee": "20분 무료",
+   "parkingHint": "정문은 어린이보호구역이에요. 후문 쪽으로 돌아가세요.",
+   "meetingPoint": "후문",
+   "qa": {
+    "정문": "정문 앞은 어린이보호구역이라 정차하면 과태료예요. 후문으로 가세요."
+   },
+   "address": "경기 성남시 분당구 소담로 45",
+   "zone": [
+    {
+     "type": "noentry",
+     "label": "정문",
+     "offsetM": -70,
+     "note": "어린이보호구역"
+    },
+    {
+     "type": "entrance",
+     "label": "후문",
+     "offsetM": 0,
+     "note": "정차 금지"
+    },
+    {
+     "type": "parking",
+     "label": "후문 공영주차장",
+     "offsetM": 40,
+     "note": "20분 무료"
+    },
+    {
+     "type": "meeting",
+     "label": "만남 · 후문",
+     "offsetM": 0
+    }
+   ]
+  },
+  {
+   "id": "apartment",
+   "name": "래미안 소담 아파트",
+   "category": "아파트",
+   "lat": 37.3921,
+   "lng": 127.112,
+   "arrivalRadiusM": 100,
+   "curbsideAllowed": true,
+   "curbsideLimitMin": 10,
+   "valet": false,
+   "parkingName": "방문자 주차",
+   "parkingFee": "1시간 무료",
+   "parkingHint": "정문 차단기에서 방문 세대 호출이 필요해요.",
+   "meetingPoint": "정문 차단기 앞",
+   "qa": {
+    "차단기": "차단기에서 호출 버튼을 누르면 세대에서 열어 줘요."
+   },
+   "address": "경기 성남시 분당구 소담로 88",
+   "zone": [
+    {
+     "type": "entrance",
+     "label": "정문 차단기",
+     "offsetM": 0,
+     "note": "10분 정차"
+    },
+    {
+     "type": "parking",
+     "label": "방문자 주차",
+     "offsetM": 50,
+     "note": "1시간 무료"
+    },
+    {
+     "type": "meeting",
+     "label": "만남 · 차단기 앞",
+     "offsetM": 0
+    }
+   ]
+  }
+ ]
 }

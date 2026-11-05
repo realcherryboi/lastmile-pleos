@@ -19,7 +19,12 @@ data class Destination(
     val parkingHint: String,            // 300m 전 보강 안내
     val meetingPoint: String,           // 마중 메시지에 들어갈 만남 지점
     val qa: Map<String, String>,        // 키워드 → 답변
+    val address: String = "",
+    val zone: List<ZoneSpot> = emptyList(),   // 도착 구역 스케치용 지점 (정문 기준 m 오프셋)
 )
+
+/** 도착 구역 지점. type: entrance / parking / meeting / noentry */
+data class ZoneSpot(val type: String, val label: String, val offsetM: Int, val note: String)
 
 class DestinationRepository(private val context: Context) {
     private var cache: List<Destination>? = null
@@ -49,6 +54,8 @@ class DestinationRepository(private val context: Context) {
                 parkingHint = o.optString("parkingHint"),
                 meetingPoint = o.optString("meetingPoint"),
                 qa = qaObj.keys().asSequence().associateWith { qaObj.getString(it) },
+                address = o.optString("address"),
+                zone = o.optJSONArray("zone")?.let { z -> (0 until z.length()).map { k -> val s = z.getJSONObject(k); ZoneSpot(s.optString("type"), s.optString("label"), s.optInt("offsetM"), s.optString("note")) } } ?: emptyList(),
             )
         }
     }

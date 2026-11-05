@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:background="@drawable/bg_card" android:padding="@dimen/card_padding">
+    <TextView android:id="@+id/detailCategory" style="@style/Chip" android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="@drawable/bg_chip_accent" android:textColor="@color/accent" android:minHeight="48dp" android:paddingStart="18dp" android:paddingEnd="18dp"/>
+    <TextView android:id="@+id/detailName" style="@style/Text.Title" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:maxLines="2" android:ellipsize="end"/>
+    <TextView android:id="@+id/detailAddress" style="@style/Text.Label" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:maxLines="1" android:ellipsize="end"/>
+    <View android:layout_width="match_parent" android:layout_height="2dp" android:background="@color/outline" android:layout_marginTop="24dp" android:layout_marginBottom="20dp"/>
+    <include android:id="@+id/detailCurb" layout="@layout/row_fact"/>
+    <include android:id="@+id/detailParking" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp"/>
+    <include android:id="@+id/detailMeet" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp"/>
+    <View android:layout_width="match_parent" android:layout_height="2dp" android:background="@color/outline" android:layout_marginTop="20dp" android:layout_marginBottom="20dp"/>
+    <!-- 마중 알림 토글 -->
+    <LinearLayout android:id="@+id/meetingCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:clickable="true" android:focusable="true">
+        <ImageView android:layout_width="44dp" android:layout_height="44dp" android:src="@drawable/ic_bell" android:tint="@color/text_primary"/>
+        <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginStart="20dp" android:layout_marginEnd="12dp">
+            <TextView style="@style/Text.Body" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textStyle="bold" android:text="@string/meeting_mode"/>
+            <TextView android:id="@+id/meetingDesc" style="@style/Text.Label" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:maxLines="2" android:ellipsize="end" android:text="@string/meeting_off"/>
+        </LinearLayout>
+        <FrameLayout android:layout_width="110dp" android:layout_height="60dp">
+            <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/meetingSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center" android:scaleX="1.5" android:scaleY="1.5"/>
+        </FrameLayout>
+    </LinearLayout>
+</LinearLayout>
