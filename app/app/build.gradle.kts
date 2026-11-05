@@ -17,7 +17,7 @@ android {
     defaultConfig {
         applicationId = "kr.lastmile.app"
         minSdk = 28
-        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }   // Pleos 실차·에뮬레이터(arm64), 인텔 맥 에뮬레이터(x86_64)
+        ndk { abiFilters += listOf("arm64-v8a") }   // Pleos 실차·에뮬레이터 모두 arm64 (APK 50 MB 이하 유지)
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"

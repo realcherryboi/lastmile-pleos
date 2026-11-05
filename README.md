@@ -24,7 +24,7 @@
 - 사용 SDK: Vehicle, NaviHelper, TextToSpeech, SpeechToText, FusedLocation
 - 차량 신호 연출은 Pleos Connect Virtual Console (`scripts/inject.sh`로 포트 포워딩 후 http://127.0.0.1:8088)
 - **지도**: MapLibre(오픈소스) + OpenFreeMap 벡터 타일(키 불필요, 인터넷 필요). 오프라인이면 같은 자리에 도착 구역 스케치(ZoneSketchView)가 대신 표시됨. 경로선은 공개 OSRM 데모 서버(데모용, 응답 없으면 생략)
-- APK는 arm64-v8a·x86_64만 포함 (Pleos 실차·에뮬레이터 arm64)
+- APK는 arm64-v8a만 포함 (Pleos 실차·에뮬레이터 모두 arm64)
 
 ## APK 위치
 <!-- 제출 규칙 필수 항목 4. release 서명 빌드 -->
