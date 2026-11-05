@@ -16,6 +16,10 @@
             <Button android:id="@+id/btnBrake" style="@style/Button.Secondary" android:layout_width="0dp" android:layout_weight="1" android:layout_height="72dp" android:text="브레이크"/>
             <Button android:id="@+id/btnGearD" style="@style/Button.Secondary" android:layout_width="0dp" android:layout_weight="1" android:layout_height="72dp" android:layout_marginStart="8dp" android:text="기어 D"/>
             <Button android:id="@+id/btnGearP" style="@style/Button.Secondary" android:layout_width="0dp" android:layout_weight="1" android:layout_height="72dp" android:layout_marginStart="8dp" android:text="기어 P"/>
+            <Button android:id="@+id/btnNaviAny" style="@style/Button.Secondary" android:layout_width="0dp" android:layout_weight="1" android:layout_height="72dp" android:layout_marginStart="8dp" android:text="임의 목적지"/>
+            <Button android:id="@+id/btnTurnRight" style="@style/Button.Secondary" android:layout_width="0dp" android:layout_weight="1" android:layout_height="72dp" android:layout_marginStart="8dp" android:text="우깜빡이"/>
+            <Button android:id="@+id/btnDoor" style="@style/Button.Secondary" android:layout_width="0dp" android:layout_weight="1" android:layout_height="72dp" android:layout_marginStart="8dp" android:text="문 열고닫기"/>
+            <Button android:id="@+id/btnSoc" style="@style/Button.Secondary" android:layout_width="0dp" android:layout_weight="1" android:layout_height="72dp" android:layout_marginStart="8dp" android:text="배터리 15%"/>
             <Button android:id="@+id/btnGeofence" style="@style/Button.Secondary" android:layout_width="0dp" android:layout_weight="1" android:layout_height="72dp" android:layout_marginStart="8dp" android:text="반경 진입"/>
         </LinearLayout>
     </LinearLayout>

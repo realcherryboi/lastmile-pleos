@@ -17,6 +17,11 @@
     <string name="recipient_hint">휴대폰 번호</string>
     <string name="recipient_name_hint">이름 (예: 엄마)</string>
     <string name="arrived_title">도착했어요</string>
+    <string name="boarded_title">승하차 확인했어요</string>
+    <string name="boarded_sub">문이 닫혔어요 · 안전 운전하세요</string>
+    <string name="battery_label">배터리</string>
+    <string name="rules_generic">일반 규칙</string>
+    <string name="depart">출발</string>
     <string name="stopping_title">잠시 정차</string>
     <string name="listening">듣고 있어요</string>
     <string name="listening_hint">예) 주차 어디? · 정문 앞에 세워도 돼?</string>

@@ -63,6 +63,18 @@
 - 지도 슬롯 공통 오버레이 `view_map_glass.xml`: 좌상 제목 캡슐(출발 전 "도착 구역 미리보기" / 안내 중 "도착 구역 · 목적지" / 도착 "만남 · 지점"), 우하 **현재 위치로** 버튼(카메라 복귀), 좌하 출처 캡슐. 카드 안의 제목 행·캡션은 지도 안으로 들어가 지도가 더 커졌다(안내 500dp, 도착 440dp).
 - 음성 시트 배경을 유리로 바꾸고 상단에 그랩 핸들. 뒤가 블러라 실제 유리처럼 읽힌다.
 
+### 임의 목적지 (A) · 차량 신호 심화 (C) — 11/5 저녁
+- **임의 목적지**: NaviHelper `onDestinationInfo(name, lat, lng)` 가 등록 장소와 안 맞으면 `Destination.generic()` 으로 바로 ARMED. `rulesKnown=false` 라 안내 문장이 "정차 규칙 정보가 없는 곳이라 일반 도로 기준 5분 이내 정차로 안내할게요"로 바뀌고, 상세 사실 행에 "일반 도로 기준"을 표시한다.
+- **보강(OsmEnricher)**: 주소는 Nominatim 역지오코딩(키 없음, User-Agent 필수), 주차장·충전소·도로 방위는 `ZoneMap.nearby()` 가 이미 내려받은 OpenFreeMap 벡터 타일의 `poi`(class parking / charging_station)·`transportation` 레이어를 `VectorSource.querySourceFeatures` 로 조회한다. 서버 호출이 없어 Overpass 같은 공개 API의 과부하(테스트 중 502)에 흔들리지 않는다. 지도가 멈출 때(onDidBecomeIdle) 최대 6회 재시도. 찾은 주차장은 절대 좌표 `ZoneSpot(lat,lng)` 로 지도에 찍힌다. 에뮬레이터 검증: 판교역 → "판교공영주차장 166 m", 주소 "경기도 성남시 분당구 판교역로146번길".
+- **차량 신호**: 우측 방향지시등(300 m 이내) → STOPPING, 승객석 문(조수석·뒷좌석) 열림→닫힘(ARRIVED 이후) → DONE "승하차 확인했어요"(정차 타이머 '완료', 버튼 '출발'), EV SoC ≤20% → 3 km 브리핑에 충전기 문장 + 안내 중 카드에 배터리 행. 모두 `TripStateMachine` 이벤트(TurnSignal/Door/EvSoc)로 들어온다. Virtual Console 주입: `PUT /vehicle/turn-signal?mode=BlinkRight`, `PUT /vehicle/body?door_fr=true|false`, `PUT /vehicle/ev-battery?field=soc&value=18` (브라우저 세션 하트비트 필요).
+
+### 지도 모션 (키 없음)
+- 3D 건물: 타일 `building` 레이어를 `FillExtrusionLayer`(render_height) 로, 줌 15 이상. 목적지 좌표 위 건물은 `queryRenderedFeatures` 로 찾아 파랑 3D 로 강조(`lm-3d-dest`).
+- 카메라: `getCameraForLatLngBounds(bounds, padding, bearing, tilt)` → `easeCamera` 900 ms. 주행 중 헤딩업(차 방향이 위) + 기울기 45°, 도착 38°, 미리보기 32°. 사용자가 손으로 움직이면 8초 유지.
+- 차 마커: 위치(기준점 기준 m 오프셋)·방향(최단 회전)을 `SpringValue` 로 보간 → GPS 갱신마다 점프하지 않는다.
+- 경로선: `lineMetrics` 소스 + `line-gradient`. 경로 로드 시 0→1 로 그려지고(reveal 스프링), 차 위치에 가장 가까운 경로점까지는 회색, 남은 구간은 파랑.
+- 도착 펄스: ARRIVED 진입 시 도착 반경 채움을 0.38→0.10 으로 한 번 가라앉힌다(반복 없음).
+
 ### 상태 처리 보강
 - 완료 후 내비가 같은 목적지를 다시 알려도 재시작하지 않도록 완료한 목적지 id를 SharedPreferences에 저장(앱 재시작 포함). 완료 시 내비 경로는 취소하지 않는다(취소하면 내비가 앞 창으로 튀어나옴).
 
@@ -72,12 +84,13 @@
 - [x] 주행 중 동영상/자동 애니메이션 없음 (전환 스프링은 사용자 조작·상태 변화에만, 0.5초 내 정지)
 - [x] Portrait/Landscape 레이아웃 (`layout-port/` 별도 — 실제 세로 창은 FormFactorConsole로 재확인 필요)
 - [x] CarUxRestrictions 수신·반영 (키보드 제한)
+- [x] Vehicle SDK 6종 신호(기어·브레이크·경고등·방향지시등·문·EV 배터리) + NaviHelper 임의 목적지 + FusedLocation 지오펜스 + TTS/STT — 5개 SDK 전부 핵심 흐름에 사용
 - [x] 백그라운드 복귀 시 상태 복원 (엔진 Application 상주)
 - [x] Adaptive icon (fg/bg 분리)
 - [ ] 더미 데이터 금지 — 데모 목적지 5곳은 "내장 샘플"이 아니라 실제 장소 데이터로 교체 필요 (제출 전)
 - [x] 릴리즈 서명 APK (`apk/김상헌_라스트마일_release.apk`, 11/5 스프링 모션·유리 오버레이 포함 재빌드)
 - [ ] 폼팩터 테스트(12.9" Portrait, 14.6" Landscape) — FormFactorConsole 앱으로 재확인
-- [ ] Vehicle SDK 퍼미션(CAR_DRIVE·CAR_LIGHTS) 앱마켓 사전 협의
+- [ ] Vehicle SDK 퍼미션(CAR_DRIVE·CAR_LIGHTS·CAR_DOORS·CAR_ENERGY) 앱마켓 사전 협의
 
 ## 5. 알려진 제약
 - `안내 종료` 시 내비 경로 취소 → 내비가 앞으로 옴. 앱으로 돌아오려면 GNB 앱 라이브러리에서 선택 (Pleos 윈도 정책).

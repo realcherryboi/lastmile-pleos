@@ -11,6 +11,7 @@
    "curbsideLimitMin": 0,
    "valet": false,
    "parkingName": "뒤편 공영주차장",
+   "parkingCharger": true,
    "parkingFee": "10분 300원",
    "parkingHint": "다음 우회전 후 바로 주차장 입구예요.",
    "meetingPoint": "정문 앞",

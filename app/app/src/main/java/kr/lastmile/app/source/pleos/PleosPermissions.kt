@@ -9,6 +9,8 @@ object PleosPermissions {
     const val CAR_DRIVE = "pleos.car.permission.CAR_DRIVE"       // Gear
     const val CAR_SAFETY = "pleos.car.permission.CAR_SAFETY"     // Telltales
     const val CAR_LIGHTS = "pleos.car.permission.CAR_LIGHTS"     // TurnSignal
+    const val CAR_DOORS = "pleos.car.permission.CAR_DOORS"       // Door position (승하차)
+    const val CAR_ENERGY = "pleos.car.permission.CAR_ENERGY"     // EvBattery SoC
     const val NAVI_ROUTE = "pleos.car.permission.NAVI_ROUTE"
     const val NAVI_ROUTE_SEARCH = "pleos.car.permission.NAVI_ROUTE_SEARCH"
     const val TTS = "pleos.car.permission.TTS_SERVICE"

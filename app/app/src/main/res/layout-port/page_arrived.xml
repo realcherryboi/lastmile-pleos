@@ -5,7 +5,7 @@
             <ImageView android:layout_width="60dp" android:layout_height="60dp" android:layout_gravity="center" android:src="@drawable/ic_check" android:tint="#FFFFFF"/>
         </FrameLayout>
         <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginStart="28dp">
-            <TextView style="@style/Text.Headline" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/arrived_title"/>
+            <TextView android:id="@+id/arrivedTitle" style="@style/Text.Headline" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/arrived_title"/>
             <TextView android:id="@+id/arrivedDestination" style="@style/Text.Body" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:textColor="@color/text_secondary" android:maxLines="1" android:ellipsize="end"/>
         </LinearLayout>
     </LinearLayout>

@@ -10,6 +10,7 @@
         <include android:id="@+id/factCurb" layout="@layout/row_fact"/>
         <include android:id="@+id/factValet" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"/>
         <include android:id="@+id/factParking" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"/>
+        <include android:id="@+id/factBattery" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:visibility="gone"/>
     </LinearLayout>
     <LinearLayout android:id="@+id/meetingStatusCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical"
         android:background="@drawable/bg_card" android:paddingStart="28dp" android:paddingEnd="28dp" android:paddingTop="22dp" android:paddingBottom="22dp" android:layout_marginTop="@dimen/gutter">

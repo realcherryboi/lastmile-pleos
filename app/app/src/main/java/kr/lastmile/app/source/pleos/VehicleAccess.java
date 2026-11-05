@@ -2,6 +2,8 @@ package kr.lastmile.app.source.pleos;
 
 import ai.pleos.playground.vehicle.Vehicle;
 import ai.pleos.playground.vehicle.api.Brake;
+import ai.pleos.playground.vehicle.api.Door;
+import ai.pleos.playground.vehicle.api.EvBattery;
 import ai.pleos.playground.vehicle.api.Gear;
 import ai.pleos.playground.vehicle.api.Safety;
 import ai.pleos.playground.vehicle.api.TurnSignal;
@@ -13,4 +15,6 @@ final class VehicleAccess {
     static Brake brake(Vehicle v) { return v.getBrake(); }
     static Safety safety(Vehicle v) { return v.getSafety(); }
     static TurnSignal turnSignal(Vehicle v) { return v.getTurnSignal(); }
+    static Door door(Vehicle v) { return v.getDoor(); }
+    static EvBattery evBattery(Vehicle v) { return v.getEvBattery(); }
 }

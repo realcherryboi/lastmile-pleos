@@ -18,6 +18,8 @@ U=$($ADB shell am get-current-user | tr -d "\r"); $ADB shell pm grant --user "$U
 step "출발 위치로 GPS 초기화, 기어 D"
 $ADB emu geo fix 127.0947 37.4127 >/dev/null
 curl -sf -X PUT "$VC/vehicle/gear?gear=Drive" >/dev/null || { echo "Virtual Console 브리지 응답 없음 (에뮬레이터/포트포워딩 확인)"; exit 1; }
+curl -s -X PUT "$VC/vehicle/ev-battery?field=soc&value=18" >/dev/null   # EV 배터리 18% → 3km 브리핑에 충전기 안내
+curl -s -X PUT "$VC/vehicle/body?door_fr=false" >/dev/null; curl -s -X PUT "$VC/vehicle/turn-signal?mode=Off" >/dev/null
 $ADB shell am force-stop $APP; $ADB shell am start -n $APP/.ui.MainActivity >/dev/null; sleep 8
 
 front(){ $ADB shell input tap 1386 1370; sleep 1.5; $ADB shell input tap 1363 860; sleep 2; }   # GNB 앱 라이브러리 → 라스트마일 아이콘
@@ -34,9 +36,13 @@ $ADB shell input tap 1253 1212; sleep 3; $ADB shell input tap 2451 163; sleep 1
 
 step "300m 진입 → 지오펜스 진입"
 $ADB emu geo fix 127.1030 37.4010 >/dev/null; sleep 7
-$ADB emu geo fix 127.1036 37.3999 >/dev/null; sleep 7
-$ADB emu geo fix 127.1038 37.3997 >/dev/null; sleep 5
+$ADB emu geo fix 127.1036 37.3999 >/dev/null; sleep 5
+step "우측 방향지시등 → 잠시 정차(STOPPING)"
+curl -s -X PUT "$VC/vehicle/turn-signal?mode=BlinkRight" >/dev/null; sleep 4; curl -s -X PUT "$VC/vehicle/turn-signal?mode=Off" >/dev/null
+$ADB emu geo fix 127.1038 37.3997 >/dev/null; sleep 4
 
 step "기어 P → ARRIVED (정차 금지 안내 + 도착 구역 스케치)"
 curl -s -X PUT "$VC/vehicle/gear?gear=Park" >/dev/null; sleep 8
+step "조수석 문 열림 → 닫힘 → 승하차 확인(DONE)"
+curl -s -X PUT "$VC/vehicle/body?door_fr=true" >/dev/null; sleep 3; curl -s -X PUT "$VC/vehicle/body?door_fr=false" >/dev/null; sleep 6
 $ADB exec-out screencap -p > /tmp/lastmile_demo_end.png && echo "스크린샷: /tmp/lastmile_demo_end.png"

@@ -40,6 +40,8 @@ data class UiState(
     val hereLat: Double = Double.NaN,            // 마지막 위치 (목록 거리 표시용)
     val hereLng: Double = Double.NaN,
     val arrivedAtMs: Long = 0L,                  // ARRIVED 진입 시각 (정차 타이머)
+    val evSoc: Int = -1,                         // EV 배터리 잔량 % (-1 = 모름)
+    val doorOpen: Boolean = false,
 )
 
 /**
@@ -63,7 +65,6 @@ class TripEngine private constructor(
     private val sourceStatus = linkedMapOf<String, String>()
     private val log = ArrayDeque<String>()
     private var started = false
-    private var unknownName: String? = null
     /** 완료한 목적지 id. 내비가 같은 목적지를 다시 알려도(앱 재시작 포함) 재시작하지 않도록 저장한다. */
     private var finishedId: String?
         get() = prefs.getString("finished", null)
@@ -79,14 +80,16 @@ class TripEngine private constructor(
     fun start() {
         if (started) return; started = true
         runCatching { navi.start(object : NaviSource.Listener {
+            init { naviListener = this }
             override fun onDestinationSet(name: String, lat: Double, lng: Double) = post {
                 val d = repository.all().firstOrNull { it.name == name }
                     ?: repository.all().filter { dist(it, lat, lng) < 300.0 }.minByOrNull { dist(it, lat, lng) }
+                // 등록 장소가 아니면 내비 좌표 그대로 "일반 규칙 목적지"로 안내한다 (주소·주차장은 지도 타일에서 보강)
+                val target = d ?: Destination.generic(name, lat, lng)
                 when {
-                    d != null && d.id == finishedId -> Unit   // 방금 완료한 목적지 (내비 경로 취소 전 재통지)
-                    d == null -> if (name != unknownName) { unknownName = name; addLog("목적지 '$name' — 데이터 없음 (내비 좌표 ${"%.4f".format(lat)}, ${"%.4f".format(lng)})") }
-                    d.id == machine.destination?.id -> Unit   // 같은 목적지 재통지는 무시
-                    else -> { finishedId = null; dispatch(TripEvent.DestinationSet(d)); location.watch(d); addLog("목적지: ${d.name}") }
+                    target.id == finishedId -> Unit   // 방금 완료한 목적지 (내비 경로 취소 전 재통지)
+                    target.id == machine.destination?.id -> Unit   // 같은 목적지 재통지는 무시
+                    else -> { finishedId = null; dispatch(TripEvent.DestinationSet(target)); location.watch(target); addLog(if (d == null) "내비 목적지 '${target.name}' — 등록 데이터 없음 → 일반 규칙" else "목적지: ${d.name}") }
                 }
             }
             override fun onRemainDistance(meters: Int, remainSec: Int) = post {
@@ -105,6 +108,9 @@ class TripEngine private constructor(
                 main.removeCallbacks(brakeHold)
                 if (pressed) main.postDelayed(brakeHold, BRAKE_HOLD_MS)
             }
+            override fun onTurnSignal(side: TurnSide) = post { if (side != TurnSide.OFF) addLog("방향지시등: $side"); dispatch(TripEvent.TurnSignal(side)) }
+            override fun onDoor(open: Boolean) = post { if (open != _ui.value.doorOpen) { addLog("승객석 문: ${if (open) "열림" else "닫힘"}"); _ui.value = _ui.value.copy(doorOpen = open); dispatch(TripEvent.Door(open)) } }
+            override fun onEvSoc(percent: Int) = post { if (percent != _ui.value.evSoc) { addLog("배터리: $percent%"); _ui.value = _ui.value.copy(evSoc = percent); dispatch(TripEvent.EvSoc(percent)) } }
             override fun onStatus(text: String) = status("차량", text)
         }) }.onFailure { status("차량", "시작 실패 ${it.message}") }
         runCatching { location.start(object : LocationSource.Listener {
@@ -134,6 +140,17 @@ class TripEngine private constructor(
     }
 
     private val prefs by lazy { context.getSharedPreferences("lastmile", Context.MODE_PRIVATE) }
+
+    /** 지도 타일·역지오코딩으로 보강된 목적지(주소·주차장·도로 방위)로 교체. 현재 목적지일 때만. */
+    fun enrich(d: Destination) = post {
+        if (machine.destination?.id != d.id) return@post
+        machine.updateDestination(d); _ui.value = _ui.value.copy(destination = d); location.watch(d)
+        addLog("목적지 보강: ${listOfNotNull(d.address.takeIf { it.isNotBlank() }, d.parkingName.takeIf { it.isNotBlank() }?.let { "$it ${d.parkingDistanceM}m" }).joinToString(" · ").ifBlank { "추가 정보 없음" }}")
+    }
+
+    /** 개발용: 내비 콜백과 같은 경로로 임의 목적지를 넣는다 (에뮬레이터 내비 검색 없이 A 시나리오 재현). */
+    fun debugDestination(name: String, lat: Double, lng: Double) { naviListener?.onDestinationSet(name, lat, lng) }
+    private var naviListener: NaviSource.Listener? = null
 
     /** 출발 전 선택만 (안내는 startGuidance 에서). */
     fun selectDestination(d: Destination) { _ui.value = _ui.value.copy(selected = d) }
