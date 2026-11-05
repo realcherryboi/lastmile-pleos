@@ -40,7 +40,24 @@ docs/                 에뮬레이터 셋업·실험 기록(emulator-setup.md)·
 app/                  Android 프로젝트
 apk/                  release APK
 scripts/inject.sh     Virtual Console 포트 포워딩
-scripts/fill_form.py  proposal.md → 접수양식 docx 생성 (`pip install python-docx` 후 `python3 scripts/fill_form.py <양식.docx> docs/proposal.md <출력.docx>`)
 ```
 
 
+
+## 오픈소스 고지 · 데이터 출처
+이 앱은 아래 오픈소스 소프트웨어와 공개 데이터를 사용합니다. 각 라이선스 조건을 따르며, 지도 화면 안에도 출처를 표기합니다.
+
+| 구성 요소 | 용도 | 라이선스 |
+|---|---|---|
+| [MapLibre Native (Android)](https://github.com/maplibre/maplibre-native) 13.6.1 | 지도 렌더링 엔진 | BSD 2-Clause |
+| [OpenFreeMap](https://openfreemap.org) 벡터 타일 · 글리프 서버 | 지도 타일(Positron 스타일) | 서비스는 무료 공개(제한 없음), 코드 MIT |
+| [OpenMapTiles](https://openmaptiles.org) 스키마 · Positron 스타일 | 타일 데이터 구조·지도 디자인 | BSD 3-Clause (코드) · CC BY 4.0 (스키마) · Positron 스타일 © CARTO, BSD 3-Clause |
+| [OpenStreetMap](https://www.openstreetmap.org/copyright) 기여자 데이터 | 도로·건물·지명 | ODbL 1.0 |
+| [OSRM](https://project-osrm.org) 공개 데모 라우팅 서버 | 경로선(데모용, 응답 없으면 생략) | BSD 2-Clause · 경로 데이터는 OSM ODbL |
+| Noto Sans (OpenFreeMap 글리프) | 지도 라벨 글꼴 | SIL Open Font License 1.1 |
+| AndroidX (core, appcompat, lifecycle, dynamicanimation) · Material Components · Kotlin Coroutines | 앱 프레임워크 · 스프링 모션 · UI 컴포넌트 | Apache License 2.0 |
+| Pleos Connect SDK (Vehicle · NaviHelper · TextToSpeech · SpeechToText · FusedLocation) | 차량 신호 · 내비 연동 · 음성 · 위치 | 현대자동차그룹 Pleos Playground 이용 약관 (비오픈소스) |
+
+- 앱 아이콘과 화면 아이콘(`res/drawable/ic_*.xml`)은 이 프로젝트에서 직접 그린 벡터 드로어블입니다.
+- 데모 목적지 5곳의 상호·주소·좌표·정문/주차장/만남 지점 데이터(`assets/destinations.json`)는 시연용 샘플이며 실제 시설 정보가 아닙니다.
+- OpenFreeMap·OSRM 데모 서버는 공개 무료 서비스입니다. 상용 배포 시 자체 타일·경로 서버 또는 유료 플랜으로 교체합니다(`docs/ui-design.md` §5).
