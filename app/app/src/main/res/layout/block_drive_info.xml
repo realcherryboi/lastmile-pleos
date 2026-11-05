@@ -6,7 +6,10 @@
             <TextView style="@style/Text.Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/zone_title"/>
             <TextView android:id="@+id/driveDestination" style="@style/Text.Body" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:textStyle="bold" android:gravity="end" android:maxLines="1" android:ellipsize="end"/>
         </LinearLayout>
-        <kr.lastmile.app.ui.ZoneSketchView android:id="@+id/zoneSketch" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp"/>
+        <FrameLayout android:id="@+id/mapSlotDrive" android:layout_width="match_parent" android:layout_height="440dp" android:background="@drawable/bg_map" android:clipToOutline="true" android:layout_marginTop="12dp">
+            <kr.lastmile.app.ui.ZoneSketchView android:id="@+id/zoneSketch" android:layout_width="match_parent" android:layout_height="match_parent"/>
+        </FrameLayout>
+        <TextView style="@style/Text.Caption" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="end" android:layout_marginTop="6dp" android:text="@string/map_credit"/>
         <View android:layout_width="match_parent" android:layout_height="2dp" android:background="@color/outline" android:layout_marginTop="16dp" android:layout_marginBottom="18dp"/>
         <include android:id="@+id/factCurb" layout="@layout/row_fact"/>
         <include android:id="@+id/factValet" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"/>

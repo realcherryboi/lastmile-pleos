@@ -18,7 +18,13 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.materialswitch.MaterialSwitch
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.maplibre.android.geometry.LatLng
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 import kr.lastmile.app.BuildConfig
 import kr.lastmile.app.LastMileApp
 import kr.lastmile.app.R
@@ -50,6 +56,11 @@ class MainActivity : AppCompatActivity() {
     private var lastState: TripState? = null
     private var query = ""
     private val clock = SimpleDateFormat("HH:mm", Locale.KOREA)
+    private lateinit var zoneMap: ZoneMap
+    private var mapOk = false
+    private var prevCar: Pair<Double, Double>? = null
+    private var carBearing = 0f
+    private var routeFor: String? = null
     private val tick = object : Runnable { override fun run() { renderCurbTimer(engine.ui.value); b.root.postDelayed(this, 1000) } }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,6 +70,7 @@ class MainActivity : AppCompatActivity() {
         engine = (application as LastMileApp).engine
         startForegroundService(Intent(this, LastMileService::class.java))
 
+        zoneMap = ZoneMap(this) { ok -> runOnUiThread { mapOk = ok; zoneMap.view.visibility = if (ok) View.VISIBLE else View.GONE; engine.status("지도", if (ok) "OpenFreeMap 스타일 로드" else "지도 로드 실패 → 스케치 폴백") } }
         buildRows()
         bindIdle(); bindDrive(); bindArrived(); bindVoice()
         b.settingsButton.setOnClickListener { showSettings() }
@@ -69,9 +81,40 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch { engine.ui.collect { render(it) } }
     }
 
-    override fun onResume() { super.onResume(); b.root.removeCallbacks(tick); b.root.post(tick) }
-    override fun onPause() { b.root.removeCallbacks(tick); super.onPause() }
-    override fun onDestroy() { ux?.stop(); super.onDestroy() }
+    override fun onStart() { super.onStart(); zoneMap.onStart() }
+    override fun onResume() { super.onResume(); zoneMap.onResume(); b.root.removeCallbacks(tick); b.root.post(tick) }
+    override fun onPause() { b.root.removeCallbacks(tick); zoneMap.onPause(); super.onPause() }
+    override fun onStop() { zoneMap.onStop(); super.onStop() }
+    override fun onLowMemory() { super.onLowMemory(); zoneMap.onLowMemory() }
+    override fun onDestroy() { ux?.stop(); zoneMap.onDestroy(); super.onDestroy() }
+
+    /** 하나의 MapView 를 현재 페이지의 지도 슬롯으로 옮긴다 (스케치가 그 아래에 폴백으로 깔려 있다). */
+    private fun placeMap(page: View) {
+        val slot = when (page) {
+            b.pageIdle.root -> page.findViewById<android.widget.FrameLayout>(R.id.mapSlotIdle)
+            b.pageArrived.root -> page.findViewById(R.id.mapSlotArrived)
+            else -> page.findViewById(R.id.mapSlotDrive)
+        }
+        slot?.let { zoneMap.attachTo(it) }
+    }
+
+    /** 경로선: 공개 OSRM 데모 서버(데모용). 실패해도 지도는 그대로 쓴다. 목적지당 1회. */
+    private fun fetchRoute(s: UiState) {
+        val d = s.destination ?: return
+        if (s.hereLat.isNaN() || routeFor == d.id) return
+        routeFor = d.id
+        val url = "https://router.project-osrm.org/route/v1/driving/${s.hereLng},${s.hereLat};${d.longitude},${d.latitude}?overview=full&geometries=geojson"
+        lifecycleScope.launch(Dispatchers.IO) {
+            val pts = runCatching {
+                val conn = URL(url).openConnection() as HttpURLConnection; conn.connectTimeout = 5000; conn.readTimeout = 8000
+                conn.setRequestProperty("User-Agent", "LastMile/${BuildConfig.VERSION_NAME} (Pleos Connect demo)")
+                val body = conn.inputStream.bufferedReader().use { it.readText() }
+                val coords = JSONObject(body).getJSONArray("routes").getJSONObject(0).getJSONObject("geometry").getJSONArray("coordinates")
+                (0 until coords.length()).map { i -> val c = coords.getJSONArray(i); LatLng(c.getDouble(1), c.getDouble(0)) }
+            }.getOrElse { android.util.Log.w("LastMile", "OSRM 실패: $it"); emptyList() }
+            withContext(Dispatchers.Main) { if (pts.isNotEmpty() && engine.ui.value.destination?.id == d.id) { zoneMap.setRoute(pts); engine.status("경로선", "OSRM ${pts.size}점") } else if (pts.isEmpty()) engine.status("경로선", "OSRM 응답 없음") }
+        }
+    }
 
     // ---------- IDLE ----------
     private fun buildRows() {
@@ -215,6 +258,23 @@ class MainActivity : AppCompatActivity() {
         lastState = s.state
 
         renderIdle(s); renderDrive(s); renderArrived(s); renderVoice(s)
+        renderMap(s, page)
+    }
+
+    private fun renderMap(s: UiState, page: View) {
+        if (!s.hereLat.isNaN()) {
+            prevCar?.let { (plat, plng) ->
+                val dy = (s.hereLat - plat) * 111_000; val dx = (s.hereLng - plng) * 111_000 * Math.cos(Math.toRadians(s.hereLat))
+                if (dx * dx + dy * dy > 25.0) carBearing = Math.toDegrees(Math.atan2(dx, dy)).toFloat()
+            }
+            prevCar = s.hereLat to s.hereLng
+        }
+        val idle = page === b.pageIdle.root
+        val dest = if (idle) s.selected else s.destination
+        val arrived = s.state == TripState.ARRIVED || s.state == TripState.DONE
+        zoneMap.update(dest, s.hereLat, s.hereLng, carBearing, arrived, includeCar = !idle)
+        if (!idle && !arrived) fetchRoute(s)
+        if (s.state == TripState.IDLE) routeFor = null
     }
 
     private fun renderIdle(s: UiState) {
@@ -233,6 +293,7 @@ class MainActivity : AppCompatActivity() {
             root.findViewById<View>(R.id.detailCurb).findViewById<ImageView>(R.id.factIcon).setImageResource(if (sel.curbsideAllowed) R.drawable.ic_clock else R.drawable.ic_stop_sign)
             setFact(root, R.id.detailParking, parkingText(sel))
             setFact(root, R.id.detailMeet, sel.meetingPoint)
+            root.findViewById<ZoneSketchView>(R.id.idleSketch).apply { destination = sel; arrived = false }
         }
         root.findViewById<Button>(R.id.startButton).isEnabled = sel != null
         val sw = root.findViewById<MaterialSwitch>(R.id.meetingSwitch)
@@ -326,6 +387,7 @@ class MainActivity : AppCompatActivity() {
         if (animate) page.animate().alpha(1f).setDuration(200).start()
         for (p in listOf(b.pageIdle.root, b.pageDrive.root, b.pageArrived.root)) if (p !== page) p.visibility = View.GONE
         prev?.alpha = 1f
+        placeMap(page)
     }
 
     // ---------- SETTINGS / DEV ----------

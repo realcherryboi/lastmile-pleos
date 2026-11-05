@@ -36,7 +36,10 @@
                     <TextView style="@style/Text.Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/zone_title"/>
                     <TextView android:id="@+id/arrivedMeet" style="@style/Text.Body" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:textStyle="bold" android:gravity="end" android:maxLines="1" android:ellipsize="end"/>
                 </LinearLayout>
-                <kr.lastmile.app.ui.ZoneSketchView android:id="@+id/arrivedSketch" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp"/>
+                <FrameLayout android:id="@+id/mapSlotArrived" android:layout_width="match_parent" android:layout_height="400dp" android:background="@drawable/bg_map" android:clipToOutline="true" android:layout_marginTop="12dp">
+                    <kr.lastmile.app.ui.ZoneSketchView android:id="@+id/arrivedSketch" android:layout_width="match_parent" android:layout_height="match_parent"/>
+                </FrameLayout>
+                <TextView style="@style/Text.Caption" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="end" android:layout_marginTop="6dp" android:text="@string/map_credit"/>
             </LinearLayout>
             <LinearLayout android:id="@+id/arrivedMessageCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical"
                 android:background="@drawable/bg_banner_success" android:padding="28dp" android:layout_marginTop="@dimen/gutter" android:visibility="gone">

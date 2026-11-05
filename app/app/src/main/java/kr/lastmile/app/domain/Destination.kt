@@ -20,7 +20,8 @@ data class Destination(
     val meetingPoint: String,           // 마중 메시지에 들어갈 만남 지점
     val qa: Map<String, String>,        // 키워드 → 답변
     val address: String = "",
-    val zone: List<ZoneSpot> = emptyList(),   // 도착 구역 스케치용 지점 (정문 기준 m 오프셋)
+    val zone: List<ZoneSpot> = emptyList(),   // 도착 구역 지점 (정문 기준 m 오프셋)
+    val roadBearing: Double = 90.0,           // 정문 앞 도로 방위(도). 지점 좌표 = 정문 + 오프셋 × 방위
 )
 
 /** 도착 구역 지점. type: entrance / parking / meeting / noentry */
@@ -55,6 +56,7 @@ class DestinationRepository(private val context: Context) {
                 meetingPoint = o.optString("meetingPoint"),
                 qa = qaObj.keys().asSequence().associateWith { qaObj.getString(it) },
                 address = o.optString("address"),
+                roadBearing = o.optDouble("roadBearing", 90.0),
                 zone = o.optJSONArray("zone")?.let { z -> (0 until z.length()).map { k -> val s = z.getJSONObject(k); ZoneSpot(s.optString("type"), s.optString("label"), s.optInt("offsetM"), s.optString("note")) } } ?: emptyList(),
             )
         }

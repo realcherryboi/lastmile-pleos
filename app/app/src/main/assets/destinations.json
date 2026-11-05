@@ -36,7 +36,8 @@
      "label": "만남 · 정문 앞",
      "offsetM": 0
     }
-   ]
+   ],
+   "roadBearing": 100
   },
   {
    "id": "hospital",
@@ -80,7 +81,8 @@
      "offsetM": -80,
      "note": "구급차 전용"
     }
-   ]
+   ],
+   "roadBearing": 70
   },
   {
    "id": "airport",
@@ -118,7 +120,8 @@
      "label": "만남 · 5번 출구 앞",
      "offsetM": 0
     }
-   ]
+   ],
+   "roadBearing": 90
   },
   {
    "id": "school",
@@ -162,7 +165,8 @@
      "label": "만남 · 후문",
      "offsetM": 0
     }
-   ]
+   ],
+   "roadBearing": 85
   },
   {
    "id": "apartment",
@@ -200,7 +204,8 @@
      "label": "만남 · 차단기 앞",
      "offsetM": 0
     }
-   ]
+   ],
+   "roadBearing": 120
   }
  ]
 }

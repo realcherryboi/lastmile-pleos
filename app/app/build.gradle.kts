@@ -17,6 +17,7 @@ android {
     defaultConfig {
         applicationId = "kr.lastmile.app"
         minSdk = 28
+        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }   // Pleos 실차·에뮬레이터(arm64), 인텔 맥 에뮬레이터(x86_64)
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
@@ -55,6 +56,7 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("org.maplibre.gl:android-sdk:13.6.1")   // 실제 지도 (벡터 타일: OpenFreeMap, 키 불필요)
 
     // Pleos Connect SDK (2026-10-19 release)
     implementation("ai.pleos.playground:Vehicle:2.3.2")

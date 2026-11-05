@@ -11,6 +11,7 @@ class LastMileApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        runCatching { org.maplibre.android.MapLibre.getInstance(this) }
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, getString(R.string.notif_channel), NotificationManager.IMPORTANCE_LOW)

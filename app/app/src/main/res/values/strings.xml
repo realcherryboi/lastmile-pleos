@@ -39,6 +39,7 @@
     <string name="eta_time">남은 시간</string>
     <string name="eta_clock">도착 예정</string>
     <string name="zone_title">도착 구역</string>
+    <string name="map_credit">© OpenFreeMap · OpenMapTiles · OpenStreetMap</string>
     <string name="meeting_point">만남</string>
     <string name="curb_allowed_title">정차 가능 시간</string>
     <string name="curb_forbidden_title">정차 금지 구역</string>

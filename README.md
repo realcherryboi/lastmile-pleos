@@ -23,13 +23,15 @@
 - Pleos Connect Emulator v2.1.0 (AAOS, API 34) / Vehicle SDK 2.3.2 · NaviHelper 3.0.5 · TTS·STT 3.3.1 · FusedLocation 1.1.3
 - 사용 SDK: Vehicle, NaviHelper, TextToSpeech, SpeechToText, FusedLocation
 - 차량 신호 연출은 Pleos Connect Virtual Console (`scripts/inject.sh`로 포트 포워딩 후 http://127.0.0.1:8088)
+- **지도**: MapLibre(오픈소스) + OpenFreeMap 벡터 타일(키 불필요, 인터넷 필요). 오프라인이면 같은 자리에 도착 구역 스케치(ZoneSketchView)가 대신 표시됨. 경로선은 공개 OSRM 데모 서버(데모용, 응답 없으면 생략)
+- APK는 arm64-v8a·x86_64만 포함 (Pleos 실차·에뮬레이터 arm64)
 
 ## APK 위치
 <!-- 제출 규칙 필수 항목 4. release 서명 빌드 -->
 - `apk/김상헌_라스트마일_release.apk` — `cd app && ./gradlew assembleSdkRelease` 로 생성한 서명(v3) 빌드. 서명 키·비밀번호는 `app/keystore/`, `app/keystore.properties`(비공개)
 
 ## 시연 영상
-- `docs/video/lastmile_demo_1080p.mp4` (100초, 무음): 목적지 목록·상세 → 안내 시작·2.6 km 브리핑 → 다음 안내 카드·진행 바·ETA → 1 km·300 m 안내 → 기어 P 도착(정차 금지·도착 구역 스케치)
+- `docs/video/lastmile_demo_1080p.mp4` (105초, 무음): 목적지 목록·상세(도착 구역 지도 미리보기) → 안내 시작·2.6 km 브리핑 → 다음 안내 카드·진행 바·ETA·실제 지도(경로선·차 마커) → 1 km·300 m 안내 → 기어 P 도착(정차 금지·도착 구역 지도)
 
 ## 저장소 구조
 ```

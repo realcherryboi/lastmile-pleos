@@ -130,6 +130,7 @@ class ZoneSketchView @JvmOverloads constructor(context: Context, attrs: Attribut
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), resolveSize((330f * d).toInt(), heightMeasureSpec))
+        val h = if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY) MeasureSpec.getSize(heightMeasureSpec) else (330f * d).toInt()
+        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), h)
     }
 }
