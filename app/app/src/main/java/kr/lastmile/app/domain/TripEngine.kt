@@ -282,9 +282,21 @@ class TripEngine private constructor(
         for (a in machine.handle(event)) when (a) {
             is TripAction.Speak -> say(a.text)
             is TripAction.Notify -> sender.send(a.text) { addLog("메시지(${a.kind}): $it") }.also { _ui.value = _ui.value.copy(lastMessage = a.text, messagesSent = _ui.value.messagesSent + a.kind) }
-            is TripAction.StateChanged -> { addLog("상태 ${a.from} → ${a.to}"); if (a.to == TripState.ARRIVED) _ui.value = _ui.value.copy(arrivedAtMs = System.currentTimeMillis()) }
+            is TripAction.StateChanged -> { addLog("상태 ${a.from} → ${a.to}"); if (a.to == TripState.ARRIVED) { _ui.value = _ui.value.copy(arrivedAtMs = System.currentTimeMillis()); bringToFront() } }
         }
         _ui.value = _ui.value.copy(state = machine.state, destination = machine.destination)
+    }
+
+    /**
+     * 주행 중에는 내비가 앞에 있고 이 앱은 뒤에서 말만 한다(화면 터치 0회 원칙, Pleos 내비는 가로 전용이라 분할 창에 같이 못 띄움).
+     * 차가 멈춘 순간(ARRIVED)에만 앱을 앞으로 가져와 정차 타이머·주차장·만남 지점을 보여 준다. 정차 중이라 시선 분산 규칙에 걸리지 않는다.
+     */
+    private fun bringToFront() {
+        runCatching {
+            val i = android.content.Intent(context, Class.forName("kr.lastmile.app.ui.MainActivity"))
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            context.startActivity(i); addLog("도착 → 앱을 앞으로")
+        }.onFailure { addLog("앱 전면 전환 실패: ${it.message}") }
     }
 
     private fun say(text: String) { speaker.speak(text); _ui.value = _ui.value.copy(lastSpoken = text); addLog("🔊 $text") }

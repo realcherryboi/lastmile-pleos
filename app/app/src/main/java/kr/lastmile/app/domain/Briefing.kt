@@ -11,6 +11,12 @@ object Briefing {
         return if (jong == 0 || jong == 8) "로" else "으로"
     }
 
+    /** 조사 (이)에요: 받침 있으면 "이에요", 없으면 "예요" */
+    fun ieyo(word: String): String {
+        val ch = word.lastOrNull { it in '가'..'힣' } ?: return "이에요"
+        return if ((ch - '가') % 28 == 0) "예요" else "이에요"
+    }
+
     /** "정문 앞은 황색 점선, 5분까지 정차 가능하고" / "정문 앞은 황색 실선이라 정차 금지고" */
     private fun curbClause(d: Destination): String {
         val line = d.curb
@@ -39,7 +45,7 @@ object Briefing {
             return "$head 정차 규칙 정보가 없는 곳이라 일반 도로 기준 5분 이내 정차로 안내할게요.$parking" + charger(d, evSoc)
         }
         val valet = if (d.valet) "발렛이 있어요." else "발렛은 없어요."
-        val parking = if (d.parkingName.isNotBlank()) " ${d.parkingName}은 ${d.parkingFee}예요." else ""
+        val parking = if (d.parkingName.isNotBlank()) " ${d.parkingName}은 ${d.parkingFee}${ieyo(d.parkingFee)}." else ""
         return "$head ${curbClause(d)} $valet$parking" + charger(d, evSoc)
     }
 
@@ -105,9 +111,9 @@ object Briefing {
     fun arrived(d: Destination, meetingOn: Boolean, purpose: TripPurpose = TripPurpose.STOP): String {
         val notice = if (meetingOn) "도착 알림 보냈어요. " else ""
         return notice + when (purpose) {
-            TripPurpose.PARK -> if (d.parkingFee.isNotBlank()) "주차장 도착했어요. ${d.parkingFee}예요." else "도착했어요. 주차 자리를 보세요."
+            TripPurpose.PARK -> if (d.parkingFee.isNotBlank()) "주차장 도착했어요. ${d.parkingFee}${ieyo(d.parkingFee)}." else "도착했어요. 주차 자리를 보세요."
             TripPurpose.VIA -> if (d.curbsideAllowed) "경유지예요. ${d.curbsideLimitMin}분 안에 출발하면 돼요." else "경유지예요. 정차 금지 구역이라 바로 내리고 출발하세요."
-            TripPurpose.STOP -> if (d.parkingFee.isNotBlank()) "여기는 ${d.parkingFee}예요." else "도착했어요."
+            TripPurpose.STOP -> if (d.parkingFee.isNotBlank()) "여기는 ${d.parkingFee}${ieyo(d.parkingFee)}." else "도착했어요."
         }
     }
 
@@ -137,7 +143,7 @@ object Briefing {
                 d.curbsideAllowed -> "정문 앞은 ${if (d.curb.known) "${d.curb.label}, " else ""}${d.curbsideLimitMin}분까지 정차 가능해요."
                 else -> "정문 앞은 ${if (d.curb.known) "${d.curb.label}이라 " else ""}정차 금지예요. 주차장 입구가 더 가까워요."
             }
-            u.contains("얼마") || u.contains("요금") -> if (d.parkingFee.isNotBlank()) "${d.parkingFee}예요." else "요금 정보가 없어요."
+            u.contains("얼마") || u.contains("요금") -> if (d.parkingFee.isNotBlank()) "${d.parkingFee}${ieyo(d.parkingFee)}." else "요금 정보가 없어요."
             u.contains("발렛") -> if (d.valet) "발렛 있어요." else "발렛은 없어요."
             u.contains("충전") -> d.charger?.let { chargerLine(it) } ?: if (d.parkingCharger) "${d.parkingName.ifBlank { "주차장" }}에 충전기가 있어요." else "근처 충전기 정보가 없어요."
             else -> at300m(d, purpose)
