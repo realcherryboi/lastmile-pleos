@@ -80,6 +80,7 @@ class TripEngine private constructor(
     private val brakeHold = Runnable { addLog("브레이크 유지"); dispatch(TripEvent.BrakeHeld(true)) }
     private val BRAKE_HOLD_MS = 3_000L
     private val NAVI_STALE_MS = 15_000L
+    val drops by lazy { DropSpotStore(context) }   // 승하차 위치 기억 (기기 내)
 
     fun start() {
         if (started) return; started = true
@@ -89,7 +90,7 @@ class TripEngine private constructor(
                 val d = repository.all().firstOrNull { it.name == name }
                     ?: repository.all().filter { dist(it, lat, lng) < 300.0 }.minByOrNull { dist(it, lat, lng) }
                 // 등록 장소가 아니면 내비 좌표 그대로 "일반 규칙 목적지"로 안내한다 (주소·주차장은 지도 타일에서 보강)
-                val target = d ?: Destination.generic(name, lat, lng)
+                val target = DropMemory.attach(d ?: Destination.generic(name, lat, lng), drops.of((d ?: Destination.generic(name, lat, lng)).id))
                 when {
                     target.id == finishedId -> Unit   // 방금 완료한 목적지 (내비 경로 취소 전 재통지)
                     target.id == machine.destination?.id -> Unit   // 같은 목적지 재통지는 무시
@@ -99,7 +100,7 @@ class TripEngine private constructor(
                         val chosen = pendingPurpose?.takeIf { it.first == target.id }?.second ?: TripPurpose.defaultFor(target)
                         pendingPurpose = null; machine.purpose = chosen; _ui.value = _ui.value.copy(purpose = chosen)
                         dispatch(TripEvent.DestinationSet(target)); location.watch(target)
-                        addLog((if (d == null) "내비 목적지 '${target.name}' — 등록 데이터 없음 → 일반 규칙" else "목적지: ${d.name}") + " · 목적 ${chosen.short}")
+                        addLog((if (d == null) "내비 목적지 '${target.name}' — 등록 데이터 없음 → 일반 규칙" else "목적지: ${d.name}") + " · 목적 ${chosen.short}" + (target.drop?.let { " · 지난번 내린 자리 ${DropMemory.describe(target, it)} (${target.dropCount}회)" } ?: ""))
                     }
                 }
             }
@@ -134,7 +135,7 @@ class TripEngine private constructor(
                 if (pressed) main.postDelayed(brakeHold, BRAKE_HOLD_MS)
             }
             override fun onTurnSignal(side: TurnSide) = post { if (side != TurnSide.OFF) addLog("방향지시등: $side"); dispatch(TripEvent.TurnSignal(side)) }
-            override fun onDoor(open: Boolean) = post { if (open != _ui.value.doorOpen) { addLog("승객석 문: ${if (open) "열림" else "닫힘"}"); _ui.value = _ui.value.copy(doorOpen = open); dispatch(TripEvent.Door(open)) } }
+            override fun onDoor(open: Boolean) = post { if (open != _ui.value.doorOpen) { addLog("승객석 문: ${if (open) "열림" else "닫힘"}"); _ui.value = _ui.value.copy(doorOpen = open); if (open) rememberDrop(); dispatch(TripEvent.Door(open)) } }
             override fun onEvSoc(percent: Int) = post { if (percent != _ui.value.evSoc) { addLog("배터리: $percent%"); _ui.value = _ui.value.copy(evSoc = percent); dispatch(TripEvent.EvSoc(percent)) } }
             override fun onStatus(text: String) = status("차량", text)
         }) }.onFailure { status("차량", "시작 실패 ${it.message}") }
@@ -165,6 +166,30 @@ class TripEngine private constructor(
     }
 
     private val prefs by lazy { context.getSharedPreferences("lastmile", Context.MODE_PRIVATE) }
+
+    /**
+     * 승객석 문이 열린 순간의 위치를 "내린 자리"로 기억한다 (Door + FusedLocation). 도착(ARRIVED)이나 잠시 정차(STOPPING) 중,
+     * 목적지에서 150 m 안일 때만. 기억은 기기 안 SharedPreferences, 목적지 id 별 최근 10건.
+     */
+    private fun rememberDrop() {
+        val d = machine.destination ?: return
+        if (machine.state != TripState.ARRIVED && machine.state != TripState.STOPPING) return
+        val lat = _ui.value.hereLat; val lng = _ui.value.hereLng
+        if (lat.isNaN() || lng.isNaN()) { addLog("내린 자리: 위치 없음 → 기억 안 함"); return }
+        val m = dist(d, lat, lng)
+        if (m > DropMemory.NEAR_M) { addLog("내린 자리: 목적지에서 ${m.toInt()} m → 기억 안 함"); return }
+        val list = drops.add(d.id, DropSpot(lat, lng, System.currentTimeMillis(), machine.purpose.name))
+        val nd = DropMemory.attach(d, list, justSaved = true)
+        machine.updateDestination(nd); _ui.value = _ui.value.copy(destination = nd)
+        addLog("내린 자리 기억: ${DropMemory.describe(nd, nd.drop!!)} · ${list.size}회")
+    }
+
+    /** 개발용: 기억 전부 삭제 (데모 반복용). 현재 목적지에서도 뗀다. */
+    fun clearDrops() = post {
+        drops.clear(); addLog("내린 자리 기억 삭제")
+        machine.destination?.let { d -> val nd = DropMemory.attach(d, emptyList()); machine.updateDestination(nd); _ui.value = _ui.value.copy(destination = nd) }
+        _ui.value.selected?.let { s -> _ui.value = _ui.value.copy(selected = DropMemory.attach(s, emptyList())) }
+    }
 
     /** 지도 타일·역지오코딩으로 보강된 목적지(주소·주차장·도로 방위)로 교체. 현재 목적지일 때만. */
     fun enrich(d: Destination) = post {
@@ -203,7 +228,7 @@ class TripEngine private constructor(
     private var naviListener: NaviSource.Listener? = null
 
     /** 출발 전 선택만 (안내는 startGuidance 에서). 목적은 정차 규칙 기본값으로 돌아간다. */
-    fun selectDestination(d: Destination) { val p = TripPurpose.defaultFor(d); pendingPurpose = d.id to p; _ui.value = _ui.value.copy(selected = d, purpose = p) }
+    fun selectDestination(d0: Destination) { val d = DropMemory.attach(d0, drops.of(d0.id)); val p = TripPurpose.defaultFor(d); pendingPurpose = d.id to p; _ui.value = _ui.value.copy(selected = d, purpose = p) }
 
     private var pendingPurpose: Pair<String, TripPurpose>? = null   // 출발 전 고른 목적 (목적지 id, 목적)
 

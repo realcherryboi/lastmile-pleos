@@ -39,6 +39,7 @@ import kr.lastmile.app.databinding.ActivityMainBinding
 import kr.lastmile.app.domain.Briefing
 import kr.lastmile.app.domain.ChargerCandidate
 import kr.lastmile.app.domain.ChargerPlanner
+import kr.lastmile.app.domain.DropMemory
 import kr.lastmile.app.domain.Destination
 import kr.lastmile.app.domain.TripPurpose
 import kr.lastmile.app.source.PublicChargerSource
@@ -120,6 +121,7 @@ class MainActivity : AppCompatActivity() {
     /** adb shell am start ... --es debug_dest "이름,위도,경도" (디버그 빌드 전용) */
     private fun handleDebugIntent(intent: Intent?) {
         if (!BuildConfig.DEBUG) return
+        if (intent?.getBooleanExtra("clear_drops", false) == true) engine.clearDrops()   // --ez clear_drops true (데모 반복용)
         val spec = intent?.getStringExtra("debug_dest") ?: return
         val p = spec.split(","); if (p.size != 3) return
         runCatching { engine.debugDestination(p[0].trim(), p[1].trim().toDouble(), p[2].trim().toDouble()) }
@@ -204,6 +206,7 @@ class MainActivity : AppCompatActivity() {
         fact(root, R.id.detailCurb, R.drawable.ic_stop_sign, getString(R.string.parking_curb))
         fact(root, R.id.detailParking, R.drawable.ic_parking, getString(R.string.parking_lot))
         fact(root, R.id.detailMeet, R.drawable.ic_walk, getString(R.string.meeting_point))
+        fact(root, R.id.detailDrop, R.drawable.ic_pin, getString(R.string.drop_label))
     }
 
     private fun filterRows() {
@@ -235,6 +238,7 @@ class MainActivity : AppCompatActivity() {
         fact(root, R.id.factValet, R.drawable.ic_person, getString(R.string.parking_valet))
         fact(root, R.id.factParking, R.drawable.ic_parking, getString(R.string.parking_lot))
         fact(root, R.id.factBattery, R.drawable.ic_bolt, getString(R.string.battery_label))
+        fact(root, R.id.factDrop, R.drawable.ic_pin, getString(R.string.drop_label))
     }
 
     private fun fact(root: View, id: Int, icon: Int, label: String) {
@@ -282,6 +286,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun curbText(d: Destination) = when { !d.rulesKnown -> "정문 앞 5분 이내 · 일반 도로 기준"; d.curbsideAllowed -> "정문 앞 ${d.curbsideLimitMin}분까지"; else -> "정문 앞 정차 금지" } + if (d.curb.known) " · ${d.curb.label}" else ""
+    /** "정문 지나서 20 m에서 내림 · 3회" — 승객석 문이 열렸던 자리 (기기 내 기억) */
+    private fun dropText(d: Destination) = d.drop?.let { "${DropMemory.describe(d, it)}에서 내림 · ${d.dropCount}회" + if (d.dropNew) " · 방금 기억" else "" }
+    private fun renderDropRow(root: View, id: Int, d: Destination) { val t = dropText(d); Motion.setVisible(root.findViewById(id), t != null, fromY = 8 * dp); if (t != null) setFact(root, id, t) }
     private fun parkingText(d: Destination) = when { d.parkingName.isBlank() -> if (d.isGeneric) "주변 주차장 찾는 중" else "정보 없음"; d.parkingFee.isNotBlank() -> "${d.parkingName} · ${d.parkingFee}"; d.parkingDistanceM >= 0 -> "${d.parkingName} · ${d.parkingDistanceM} m"; else -> d.parkingName }
     private fun fmtMeters(m: Int) = if (m >= 1000) getString(R.string.remain_fmt_km, m / 1000.0) else getString(R.string.remain_fmt_m, m)
 
@@ -458,6 +465,7 @@ class MainActivity : AppCompatActivity() {
             root.findViewById<View>(R.id.detailCurb).findViewById<ImageView>(R.id.factIcon).setImageResource(if (sel.curbsideAllowed) R.drawable.ic_clock else R.drawable.ic_stop_sign)
             setFact(root, R.id.detailParking, parkingText(sel))
             setFact(root, R.id.detailMeet, sel.meetingPoint)
+            renderDropRow(root, R.id.detailDrop, sel)
             root.findViewById<ZoneSketchView>(R.id.idleSketch).apply { destination = sel; arrived = false }
             renderPurpose(root, s)
         }
@@ -506,6 +514,7 @@ class MainActivity : AppCompatActivity() {
             dr.findViewById<View>(R.id.factCurb).findViewById<ImageView>(R.id.factIcon).setImageResource(if (s.purpose == TripPurpose.PARK) R.drawable.ic_parking else if (d.curbsideAllowed) R.drawable.ic_clock else R.drawable.ic_stop_sign)
             setFact(dr, R.id.factValet, if (d.valet) "있음" else "없음")
             setFact(dr, R.id.factParking, parkingText(d))
+            renderDropRow(dr, R.id.factDrop, d)
             val bat = dr.findViewById<View>(R.id.factBattery)
             Motion.setVisible(bat, s.evSoc >= 0, fromY = 8 * dp)
             if (s.evSoc >= 0) setFact(dr, R.id.factBattery, "${s.evSoc}%" + when { s.evSoc > Briefing.LOW_SOC -> ""; d.charger != null -> " · ${d.charger.name} ${d.charger.distanceM} m"; d.parkingCharger -> " · ${d.parkingName.ifBlank { "주차장" }} 충전기 있음"; else -> " · 충전기 정보 없음" })
@@ -524,7 +533,7 @@ class MainActivity : AppCompatActivity() {
         val d = s.destination; val ar = b.pageArrived.root
         val boarded = s.state == TripState.DONE
         ar.findViewById<TextView>(R.id.arrivedTitle).text = getString(if (boarded) R.string.boarded_title else R.string.arrived_title)
-        ar.findViewById<TextView>(R.id.arrivedDestination).text = if (boarded) getString(R.string.boarded_sub) else d?.let { listOf(it.name, it.address).filter { f -> f.isNotBlank() }.joinToString(" · ") } ?: ""
+        ar.findViewById<TextView>(R.id.arrivedDestination).text = if (boarded) getString(R.string.boarded_sub) + (d?.takeIf { it.dropNew }?.drop?.let { " · 내린 자리 기억 (${DropMemory.describe(d, it)})" } ?: "") else d?.let { listOf(it.name, it.address).filter { f -> f.isNotBlank() }.joinToString(" · ") } ?: ""
         ar.findViewById<Button>(R.id.doneButton).text = getString(if (boarded) R.string.depart else R.string.done)
         if (d != null) {
             val curbTitle = ar.findViewById<TextView>(R.id.curbTitle); val curbIcon = ar.findViewById<ImageView>(R.id.curbIcon); val curbHint = ar.findViewById<TextView>(R.id.curbHint)
@@ -650,6 +659,7 @@ class MainActivity : AppCompatActivity() {
         v.findViewById<View>(R.id.btnDoor).setOnClickListener { veh?.door(true); v.postDelayed({ veh?.door(false) }, 1500) }
         v.findViewById<View>(R.id.btnSoc).setOnClickListener { veh?.soc(15) }
         v.findViewById<View>(R.id.btnChargeOps).setOnClickListener { engine.navi.requestChargerOperators() }
+        v.findViewById<View>(R.id.btnClearDrops).setOnClickListener { engine.clearDrops() }
         v.findViewById<View>(R.id.btnNaviAny).setOnClickListener { engine.debugDestination("판교역", 37.3948, 127.1112) }
         val src = v.findViewById<TextView>(R.id.devSources); val log = v.findViewById<TextView>(R.id.devLog)
         val job = lifecycleScope.launch { engine.ui.collect { s -> src.text = s.sources.entries.joinToString("  ·  ") { "${it.key}: ${it.value}" }; log.text = s.log.joinToString("\n") } }

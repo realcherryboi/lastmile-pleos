@@ -15,6 +15,7 @@
     <include android:id="@+id/detailCurb" layout="@layout/row_fact"/>
     <include android:id="@+id/detailParking" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp"/>
     <include android:id="@+id/detailMeet" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp"/>
+    <include android:id="@+id/detailDrop" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:visibility="gone"/>
     <View android:layout_width="match_parent" android:layout_height="2dp" android:background="@color/outline" android:layout_marginTop="20dp" android:layout_marginBottom="20dp"/>
     <!-- 마중 알림 토글 -->
     <LinearLayout android:id="@+id/meetingCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:clickable="true" android:focusable="true">

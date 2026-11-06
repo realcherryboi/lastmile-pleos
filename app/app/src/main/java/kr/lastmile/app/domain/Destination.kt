@@ -34,6 +34,9 @@ data class Destination(
     val charger: ChargerCandidate? = null,    // 머무는 동안 충전 추천 1곳 (ChargerPlanner)
     val chargers: List<ChargerCandidate> = emptyList(),   // 반경 내 후보 전체 (실시간 데이터 병합용)
     val curbLine: String = "",                // 정문 앞 차선 (CurbLine.key: white_solid / yellow_dashed / yellow_solid / yellow_double)
+    val drop: DropSpot? = null,               // 지난번 내린 자리 (승객석 문이 열린 좌표, 기기 내 기억 · DropMemory)
+    val dropCount: Int = 0,                   // 기억된 횟수
+    val dropNew: Boolean = false,             // 이번 도착에서 방금 기억함 (승하차 문장에 한마디 덧붙임)
 ) {
     val isGeneric get() = source == "navi"
     val curb: CurbLine get() = CurbLine.of(curbLine)

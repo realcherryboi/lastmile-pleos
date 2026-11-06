@@ -54,6 +54,8 @@
     <string name="recenter">현재 위치로</string>
     <string name="map_credit">© OpenFreeMap · OpenMapTiles · OpenStreetMap</string>
     <string name="meeting_point">만남</string>
+    <string name="drop_label">지난번</string>
+    <string name="dev_clear_drops">내린 자리 지우기</string>
     <string name="curb_allowed_title">정차 가능 시간</string>
     <string name="curb_forbidden_title">정차 금지 구역</string>
     <string name="distance_fmt_km">%.1f km</string>

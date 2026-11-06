@@ -254,6 +254,7 @@ class ZoneMap(private val context: Context, private val onAvailable: (Boolean) -
         st.addImage("lm-meeting", circleIcon(R.drawable.ic_walk, c(R.color.text_primary)))
         st.addImage("lm-noentry", circleIcon(R.drawable.ic_block, c(R.color.informative_negative)))
         st.addImage("lm-charger", circleIcon(R.drawable.ic_bolt, c(R.color.informative_active)))
+        st.addImage("lm-drop", circleIcon(R.drawable.ic_pin, c(R.color.informative_active)))
         st.addImage("lm-car", carIcon())
         st.addLayer(LineLayer("lm-route-casing", SRC_ROUTE).withProperties(lineColor(Color.WHITE), lineWidth(12f), lineCap(Property.LINE_CAP_ROUND), lineJoin(Property.LINE_JOIN_ROUND)))
         st.addLayer(LineLayer("lm-route", SRC_ROUTE).withProperties(lineColor(c(R.color.informative_positive)), lineWidth(7f), lineCap(Property.LINE_CAP_ROUND), lineJoin(Property.LINE_JOIN_ROUND)))
@@ -293,7 +294,7 @@ class ZoneMap(private val context: Context, private val onAvailable: (Boolean) -
         st.getSourceAs<GeoJsonSource>(SRC_CURB)?.setGeoJson(curb?.let { FeatureCollection.fromFeature(it) } ?: EMPTY)
         val feats = spots.map { s ->
             Feature.fromGeometry(Point.fromLngLat(s.lng, s.lat)).apply {
-                addStringProperty("icon", when (s.type) { "parking" -> "lm-parking"; "meeting" -> "lm-meeting"; "noentry" -> "lm-noentry"; "charger" -> "lm-charger"; else -> if (dest?.curbsideAllowed == true) "lm-pin-ok" else "lm-pin-no" })
+                addStringProperty("icon", when (s.type) { "parking" -> "lm-parking"; "meeting" -> "lm-meeting"; "noentry" -> "lm-noentry"; "charger" -> "lm-charger"; "drop" -> "lm-drop"; else -> if (dest?.curbsideAllowed == true) "lm-pin-ok" else "lm-pin-no" })
                 addStringProperty("label", if (s.note.isNotBlank()) "${s.label}\n${s.note}" else s.label)
             }
         }
