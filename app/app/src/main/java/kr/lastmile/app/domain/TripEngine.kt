@@ -297,10 +297,12 @@ class TripEngine private constructor(
     }
 
     /**
-     * 주행 중에는 내비가 앞에 있고 이 앱은 뒤에서 말만 한다(화면 터치 0회 원칙, Pleos 내비는 가로 전용이라 분할 창에 같이 못 띄움).
-     * 차가 멈춘 순간(ARRIVED)에만 앱을 앞으로 가져와 정차 타이머·주차장·만남 지점을 보여 준다. 정차 중이라 시선 분산 규칙에 걸리지 않는다.
+     * 주행 중에는 내비가 앞(또는 분할 창 왼쪽)에 있고 이 앱은 오른쪽 반 창이나 뒤에서 말한다(화면 터치 0회 원칙).
+     * 뒤에 있을 때만 차가 멈춘 순간(ARRIVED)에 앱을 앞으로 가져와 정차 타이머·주차장·만남 지점을 보여 준다. 정차 중이라 시선 분산 규칙에 걸리지 않는다.
+     * 분할 창으로 이미 보이는 중이면 그대로 둔다(startActivity 를 또 부르면 왼쪽 창으로 옮겨져 "내비 왼쪽 · 라스트마일 오른쪽" 이 뒤집힌다).
      */
     private fun bringToFront() {
+        if (kr.lastmile.app.LastMileApp.activityResumed) { addLog("도착 → 이미 화면에 떠 있음(분할 창), 그대로 둠"); return }
         runCatching {
             val i = android.content.Intent(context, Class.forName("kr.lastmile.app.ui.MainActivity"))
                 .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)

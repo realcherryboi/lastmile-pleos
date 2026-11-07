@@ -15,7 +15,7 @@
 2. Pleos Connect Emulator v2.1.0 실행 (설치: `docs/emulator-setup.md`)
 3. 빌드 변형: `sdk`(Pleos SDK 연동, 제출용) / `mock`(화면 버튼으로 신호 흉내, 앱 ID `.mock`)
 4. 설치 후 `adb shell pm grant --user 10 kr.lastmile.app pleos.car.permission.FUSED_LOCATION` (실행 사용자 ID는 `am get-current-user`)
-5. 데모 재현: `scripts/demo.sh` (경로 요청 → GPS 접근 → Virtual Console에서 기어 P)
+5. 데모 재현: `scripts/demo.sh` (목적지 선택 → 안내 시작 → 내비 주행 시뮬레이션 → 분할 화면 → 도착은 Virtual Console 기어 P). 내비를 움직이는 법은 `docs/emulator-setup.md` §11
 
 ## 테스트 환경 · 필요 설정
 <!-- 제출 규칙 필수 항목 3 -->

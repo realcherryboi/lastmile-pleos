@@ -21,5 +21,7 @@ class LastMileApp : Application() {
 
     companion object {
         const val CHANNEL_ID = "lastmile.driving"
+        /** 화면이 떠 있는지(onResume~onPause). 분할 창으로 이미 보이는 중이면 도착 때 앞으로 불러오지 않는다 — 불러오면 좌우 창 순서가 뒤집힌다. */
+        @Volatile var activityResumed: Boolean = false
     }
 }

@@ -121,15 +121,16 @@ class MainActivity : AppCompatActivity() {
     /** adb shell am start ... --es debug_dest "이름,위도,경도" (디버그 빌드 전용) */
     private fun handleDebugIntent(intent: Intent?) {
         if (!BuildConfig.DEBUG) return
-        if (intent?.getBooleanExtra("clear_drops", false) == true) engine.clearDrops()   // --ez clear_drops true (데모 반복용)
+        if (intent?.getBooleanExtra("clear_drops", false) == true) { engine.clearDrops(); intent.removeExtra("clear_drops") }   // --ez clear_drops true (데모 반복용). 창 크기 변경으로 액티비티가 다시 만들어질 때 같은 인텐트가 또 오므로 한 번 처리하면 지운다
         val spec = intent?.getStringExtra("debug_dest") ?: return
+        intent.removeExtra("debug_dest")
         val p = spec.split(","); if (p.size != 3) return
         runCatching { engine.debugDestination(p[0].trim(), p[1].trim().toDouble(), p[2].trim().toDouble()) }
     }
 
     override fun onStart() { super.onStart(); zoneMap.onStart() }
-    override fun onResume() { super.onResume(); zoneMap.onResume(); b.root.removeCallbacks(tick); b.root.post(tick) }
-    override fun onPause() { b.root.removeCallbacks(tick); zoneMap.onPause(); super.onPause() }
+    override fun onResume() { super.onResume(); LastMileApp.activityResumed = true; zoneMap.onResume(); b.root.removeCallbacks(tick); b.root.post(tick) }
+    override fun onPause() { LastMileApp.activityResumed = false; b.root.removeCallbacks(tick); zoneMap.onPause(); super.onPause() }
     override fun onStop() { zoneMap.onStop(); super.onStop() }
     override fun onLowMemory() { super.onLowMemory(); zoneMap.onLowMemory() }
     override fun onDestroy() { ux?.stop(); zoneMap.onDestroy(); super.onDestroy() }
