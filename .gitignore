@@ -19,3 +19,4 @@ app/keys.properties
 .DS_Store
 app/.kotlin/
 scripts/fill_form.py
+_workspace/

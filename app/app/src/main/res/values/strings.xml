@@ -24,8 +24,8 @@
     <string name="purpose_stop">정차 · 픽업</string>
     <string name="purpose_park">도착 후 주차</string>
     <string name="purpose_via">경유</string>
-    <string name="charger_add_waypoint">경유지 추가</string>
-    <string name="charger_added">경유지 추가됨</string>
+    <string name="charger_add_waypoint">충전기 자리로 안내</string>
+    <string name="charger_added">충전기 자리로 안내 중</string>
     <string name="charger_navi_planned">내비 계획됨</string>
     <string name="rules_generic">일반 규칙</string>
     <string name="depart">출발</string>

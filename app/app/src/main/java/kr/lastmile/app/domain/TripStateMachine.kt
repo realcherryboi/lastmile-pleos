@@ -42,6 +42,8 @@ class TripStateMachine {
         private set
     var meetingMode: Boolean = false
     var purpose: TripPurpose = TripPurpose.STOP   // 이번 목적지에서 할 일 (엔진이 목적지 설정 때 정한다)
+        set(v) { if (state == TripState.BRIEF_3KM && v != field) purposeChangedSince3km = true; field = v }
+    private var purposeChangedSince3km = false      // 3 km 브리핑 뒤 목적을 바꿨으면 1 km 에서 규칙을 한 번 더 말한다
     var evSoc: Int = -1                      // 마지막 배터리 잔량 (-1 = 모름)
         private set
 
@@ -65,12 +67,13 @@ class TripStateMachine {
                 lastRemainMin = maxOf(1, event.remainSec / 60)
                 when {
                     state == TripState.ARMED && event.meters <= 3000 -> {
+                        purposeChangedSince3km = false
                         transition(TripState.BRIEF_3KM, out)
                         out += TripAction.Speak(Briefing.at3km(d, lastRemainMin, evSoc, purpose))
                         if (meetingMode) out += TripAction.Notify("eta", Briefing.meetingEta(d, lastRemainMin))
                     }
                     state == TripState.BRIEF_3KM && event.meters <= 1000 -> {
-                        transition(TripState.BRIEF_1KM, out); out += TripAction.Speak(Briefing.at1km(d, purpose))
+                        transition(TripState.BRIEF_1KM, out); out += TripAction.Speak(Briefing.at1km(d, purpose, purposeChangedSince3km))
                     }
                     state == TripState.BRIEF_1KM && event.meters <= 300 -> {
                         transition(TripState.BRIEF_300M, out); out += TripAction.Speak(Briefing.at300m(d, purpose))

@@ -72,15 +72,35 @@ object Briefing {
         return where + status + op
     }
 
-    fun at1km(d: Destination, purpose: TripPurpose = TripPurpose.STOP): String {
+    /** 정문 → 주차장 입구 거리 (보강값 또는 등록 데이터의 주차장 오프셋) */
+    fun parkingDistance(d: Destination): Int = if (d.parkingDistanceM >= 0) d.parkingDistanceM else d.zone.firstOrNull { it.type == "parking" && !it.absolute }?.offsetM?.let { kotlin.math.abs(it) } ?: -1
+
+    /** "주차장 입구는 정문 지나서 30미터예요" / "주차장 입구로 안내할게요" */
+    private fun parkingEntrance(d: Destination): String {
+        val name = d.parkingName.ifBlank { "주차장" }
+        val m = parkingDistance(d)
+        val off = d.zone.firstOrNull { it.type == "parking" && !it.absolute }?.offsetM ?: 0
+        return if (m > 0) "$name 입구는 정문 ${if (off < 0) "${m}미터 전" else "지나서 ${m}미터"}예요." else "$name 입구로 안내할게요."
+    }
+
+    /**
+     * 1 km: 3 km 에서 말한 규칙을 되풀이하지 않고 행동만 말한다 (대표 결정 11/8).
+     * 규칙을 다시 말하는 때는 둘뿐 — 안내 중에 목적을 바꿨을 때(purposeChanged), 등록되지 않은 목적지라 선 읽는 법을 알려 줘야 할 때.
+     */
+    fun at1km(d: Destination, purpose: TripPurpose = TripPurpose.STOP, purposeChanged: Boolean = false): String {
         val line = d.curb
-        return when {
-            purpose == TripPurpose.PARK -> if (d.parkingName.isNotBlank()) "1킬로 남았어요. ${d.parkingName} 입구로 바로 안내할게요." else "1킬로 남았어요. 정문 앞에 세우고 주차 자리를 보세요."
-            !d.rulesKnown -> "1킬로 남았어요. 정문 앞 차선을 보세요. 황색 점선이면 5분, 실선이면 세울 수 없어요."
-            d.curbsideAllowed && line.known -> "1킬로 남았어요. 정문 앞 ${line.label}, ${d.curbsideLimitMin}분까지 세울 수 있어요."
-            d.curbsideAllowed -> "1킬로 남았어요. 정문 앞에 잠깐 세울 수 있어요."
-            line.known -> "1킬로 남았어요. 정문 앞은 ${line.label}이라 못 세워요. 주차장으로 안내할게요."
-            else -> "1킬로 남았어요. 주차장으로 바로 안내할게요."
+        if (!d.rulesKnown) return "1킬로 남았어요. 정문 앞 차선을 보세요. 황색 점선이면 5분, 실선이면 세울 수 없어요."
+        if (purposeChanged) return "1킬로 남았어요. " + when {
+            purpose == TripPurpose.PARK -> "주차로 바꿨으니 ${parkingEntrance(d)}"
+            d.curbsideAllowed && line.known -> "정문 앞 ${line.label}, ${d.curbsideLimitMin}분까지 세울 수 있어요."
+            d.curbsideAllowed -> "정문 앞에 ${d.curbsideLimitMin}분까지 세울 수 있어요."
+            line.known -> "정문 앞은 ${line.label}이라 못 세워요. ${parkingEntrance(d)}"
+            else -> "정문 앞은 정차 금지예요. ${parkingEntrance(d)}"
+        }
+        return "1킬로 남았어요. " + when {
+            purpose == TripPurpose.PARK -> if (d.parkingName.isNotBlank()) parkingEntrance(d) else "정문 앞에 세우고 주차 자리를 보세요."
+            d.curbsideAllowed -> "정문 앞에 ${d.curbsideLimitMin}분까지 세울 수 있어요."
+            else -> parkingEntrance(d)
         }
     }
 

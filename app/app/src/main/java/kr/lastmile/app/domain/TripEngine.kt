@@ -220,7 +220,7 @@ class TripEngine private constructor(
     fun addChargerWaypoint() {
         val c = machine.destination?.charger ?: return
         navi.addWaypoint(c.name, c.lat, c.lng); _ui.value = _ui.value.copy(chargerWaypointAdded = true)
-        say("${c.name}을 경유지로 넣었어요."); addLog("경유지 추가: ${c.name}")
+        say("정문 대신 ${c.name} 충전기 자리로 안내할게요."); addLog("충전기 경유지 요청: ${c.name}")
     }
 
     /** 개발용: 내비 콜백과 같은 경로로 임의 목적지를 넣는다 (에뮬레이터 내비 검색 없이 A 시나리오 재현). */
@@ -273,6 +273,15 @@ class TripEngine private constructor(
         when {
             t.contains("마중") && (t.contains("켜") || t.contains("시작")) -> { setMeetingMode(true); say("마중 모드 켰어요.") }
             t.contains("마중") && (t.contains("꺼") || t.contains("해제")) -> { setMeetingMode(false); say("마중 모드 껐어요.") }
+            t.contains("충전") && (t.contains("안내") || t.contains("가자") || t.contains("가줘") || t.contains("넣어") || t.contains("들러")) -> {
+                // "충전기 자리로 안내해" — 카드 버튼과 같은 요청을 음성으로 (주행 중 터치 0회)
+                val c = machine.destination?.charger
+                when {
+                    c == null -> say("근처 충전기 정보가 없어요.")
+                    _ui.value.chargerWaypointAdded -> say("이미 ${c.name}으로 안내 중이에요.")
+                    else -> addChargerWaypoint()
+                }
+            }
             d == null -> say("먼저 목적지를 설정해 주세요.")
             else -> say(Briefing.answer(d, text, machine.purpose))
         }
