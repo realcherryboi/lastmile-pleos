@@ -161,3 +161,11 @@ scripts/demo.sh
 - 설치 후 실행 사용자 권한: `adb shell pm grant --user $(adb shell am get-current-user) kr.lastmile.app pleos.car.permission.FUSED_LOCATION` — `--user` 를 빼면 user 0 에만 부여되어 위치 콜백이 오지 않는다(실측).
 - 시연 영상: `docs/submission/video/lastmile_demo_1080p.mp4` (73초, 1920×1080, 무음 — screenrecord 는 오디오를 담지 않음. TTS 음성이 필요하면 호스트에서 화면·오디오 동시 녹화 필요)
 - 재현: `adb shell screenrecord --time-limit 120 /sdcard/d.mp4 &` → `scripts/demo.sh` → `adb pull`
+
+## 11. 내비 주행 시뮬레이션 — 11/8 02시 (에뮬레이터 내비를 움직이는 유일한 방법)
+- **여는 법**: 안내 중인 내비 화면(전체 창) 오른쪽 아래 볼륨 버튼과 설정 버튼 **사이의 빈 곳**(전체 창 기준 2460,1176)을 1.3초쯤 길게 누르면 "주행 시뮬레이션" 패널이 뜬다(슬라이더 = 속도, 시작/정지/종료). `adb shell input swipe 2460 1176 2460 1176 1300` → 시작 버튼 (2141,772), 종료 (2353,772), 닫기 X (2435,592). 버튼 위를 누르면 볼륨·설정이 열리니 꼭 사이를 누른다.
+- 시작하면 내비 차 마커가 경로를 따라 달리고 TBT·남은 거리·ETA·클러스터 제한속도 표시까지 전부 갱신된다. 2.6 km 경로가 약 160초(≈60 km/h)에 끝나며, 도착하면 내비 Trip 이 END → IDLE 로 넘어간다.
+- 라스트마일은 NaviHelper remainDistance 를 1차로 쓰므로 GPS 없이도 3 km(도착 6분 전)·1 km·300 m·도착 안내가 그대로 나온다(11/8 02:17 실측: 2500→0 m, 🔊 5문장 전부 발화). 도착 확정은 기어 P(Virtual Console) 가 필요하고, 내린 자리 기억은 FusedLocation 좌표를 쓰므로 도착 직후 `adb emu geo fix 127.10404 37.39967` 한 번은 넣어 준다(시뮬레이션은 FusedLocation 을 움직이지 않는다).
+- **GPS 주입은 막다른 길이었다**: 내비(Navi42 3.3.2)는 LocationManager NMEA 리스너로 `$GPGGA`/`$GPGSA` 만 파싱하는데(`NmeaParser`, GPRMC 없음), ranchu GNSS HAL 은 체크섬을 항상 `*47` 로 찍어 전부 버려진다. 고도(GGA)·음수 속도(RMC) 자릿수로 XOR 체크섬을 0x47 에 맞춰 통과시켜도(호스트 시계 초 기준, `scratchpad/nmea_drive.py`) 엔진 입력 `mapmatching org(...)` 은 바뀌지 않았다. 차속 40 km/h(`PUT /vehicle/controls?speed=40&accelerator=25&brake=0&steering=0`)를 함께 줘도 마찬가지. 내비 엔진은 자체 시뮬레이션 외의 위치 소스를 에뮬레이터에서 받지 않는다고 보면 된다.
+- Virtual Console `controls` 엔드포인트: `speed`(km/h)·`accelerator`·`brake`(%)·`steering`(deg). 클러스터 속도 표시에 바로 반영된다(영상에서 "0 km/h" 대신 달리는 숫자를 보여 줄 때 쓸 수 있다).
+
