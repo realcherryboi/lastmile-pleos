@@ -510,13 +510,13 @@ class MainActivity : AppCompatActivity() {
             if (n.inMeters >= 0) { if (cd.getTag(R.id.tag_hiding) == true || countdownNum.target <= 0f) countdownNum.snapTo(n.inMeters.toFloat()) else countdownNum.animateTo(n.inMeters.toFloat()) } else countdownNum.snapTo(0f)
             dr.findViewById<TextView>(R.id.stoppingHint).text = if (d.curbsideAllowed) "여기는 ${d.curbsideLimitMin}분까지 세울 수 있어요" else "정차 금지 구역이에요 · ${d.parkingName}로 안내"
             renderPurpose(dr, s)
-            setFact(dr, R.id.factCurb, if (s.purpose == TripPurpose.PARK) "주차 목적 · 정문 앞 건너뜀" + (if (d.curb.known) " · ${d.curb.label}" else "") else curbText(d))
+            setFact(dr, R.id.factCurb, if (s.purpose == TripPurpose.PARK) (if (d.curb.known) "${d.curb.label} · 주차 목적이라 건너뜀" else "주차 목적이라 건너뜀") else curbText(d))
             dr.findViewById<View>(R.id.factCurb).findViewById<ImageView>(R.id.factIcon).setImageResource(if (s.purpose == TripPurpose.PARK) R.drawable.ic_parking else if (d.curbsideAllowed) R.drawable.ic_clock else R.drawable.ic_stop_sign)
-            setFact(dr, R.id.factValet, if (d.valet) "있음" else "없음")
+            dr.findViewById<View>(R.id.factValet).visibility = View.GONE   // 시안: 사실 3개(정문·주차·지난번)만. 발렛은 브리핑 문장에서 말한다
             setFact(dr, R.id.factParking, parkingText(d))
             renderDropRow(dr, R.id.factDrop, d)
             val bat = dr.findViewById<View>(R.id.factBattery)
-            Motion.setVisible(bat, s.evSoc >= 0, fromY = 8 * dp)
+            Motion.setVisible(bat, s.evSoc in 0..ChargerPlanner.HINT_SOC, fromY = 8 * dp)   // 배터리가 낮을 때만 (시안)
             if (s.evSoc >= 0) setFact(dr, R.id.factBattery, "${s.evSoc}%" + when { s.evSoc > Briefing.LOW_SOC -> ""; d.charger != null -> " · ${d.charger.name} ${d.charger.distanceM} m"; d.parkingCharger -> " · ${d.parkingName.ifBlank { "주차장" }} 충전기 있음"; else -> " · 충전기 정보 없음" })
             renderChargerCard(dr, s, d)
         }
@@ -533,7 +533,13 @@ class MainActivity : AppCompatActivity() {
         val d = s.destination; val ar = b.pageArrived.root
         val boarded = s.state == TripState.DONE
         ar.findViewById<TextView>(R.id.arrivedTitle).text = getString(if (boarded) R.string.boarded_title else R.string.arrived_title)
-        ar.findViewById<TextView>(R.id.arrivedDestination).text = if (boarded) getString(R.string.boarded_sub) + (d?.takeIf { it.dropNew }?.drop?.let { " · 내린 자리 기억 (${DropMemory.describe(d, it)})" } ?: "") else d?.let { listOf(it.name, it.address).filter { f -> f.isNotBlank() }.joinToString(" · ") } ?: ""
+        ar.findViewById<TextView>(R.id.arrivedDestination).text = if (boarded) getString(R.string.boarded_sub) else d?.let { listOf(it.name, it.address).filter { f -> f.isNotBlank() }.joinToString(" · ") } ?: ""
+        // 승하차 카드: 기다리는 중 → 끝(내린 자리 기억 안내)
+        ar.findViewById<TextView>(R.id.boardTitle).text = getString(if (boarded) R.string.boarding_done_title else R.string.boarding_wait_title)
+        ar.findViewById<TextView>(R.id.boardHint).text = if (boarded) {
+            val where = d?.takeIf { it.dropNew }?.drop?.let { "내린 자리: ${DropMemory.describe(d, it)}. " } ?: ""
+            where + getString(R.string.boarding_done_hint)
+        } else getString(R.string.boarding_wait_hint)
         ar.findViewById<Button>(R.id.doneButton).text = getString(if (boarded) R.string.depart else R.string.done)
         if (d != null) {
             val curbTitle = ar.findViewById<TextView>(R.id.curbTitle); val curbIcon = ar.findViewById<ImageView>(R.id.curbIcon); val curbHint = ar.findViewById<TextView>(R.id.curbHint)

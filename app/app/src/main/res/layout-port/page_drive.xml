@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 안내 중 반 창(세로): 한 열. hero(ETA 줄·다음 안내·말한 문장·진행 바) → 칩·사실 3개 → 버튼 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
     <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:overScrollMode="never" android:scrollbars="none">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
             <include layout="@layout/block_drive_hero"/>
-            <include layout="@layout/block_drive_eta" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/gutter"/>
-            <include layout="@layout/block_drive_info" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/gutter"/>
+            <include layout="@layout/block_drive_info" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp"/>
         </LinearLayout>
     </ScrollView>
-    <include layout="@layout/block_drive_actions" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/gutter"/>
+    <include layout="@layout/block_drive_actions" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp"/>
 </LinearLayout>

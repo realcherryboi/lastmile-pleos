@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 안내 중 반 창(세로 841px, 내비 옆): ETA 한 줄 → 다음 안내 카드(아이콘+라벨 / 큰 남은 거리 → 제목 → 미리보기) → 방금 말한 문장 → 진행 바 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical|end" android:paddingEnd="4dp" android:layout_marginBottom="16dp">
+        <TextView android:id="@+id/driveRemain" style="@style/Text.Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textStyle="bold" android:textColor="@color/text_primary" android:text="—"/>
+        <TextView style="@style/Text.Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="  ·  "/>
+        <TextView android:id="@+id/driveEta" style="@style/Text.Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—"/>
+        <TextView style="@style/Text.Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="  ·  "/>
+        <TextView android:id="@+id/driveClock" style="@style/Text.Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—"/>
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/stoppingBanner" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical"
+        android:background="@drawable/bg_banner_warning" android:padding="24dp" android:layout_marginBottom="20dp" android:visibility="gone">
+        <ImageView android:layout_width="40dp" android:layout_height="40dp" android:src="@drawable/ic_clock" android:tint="@color/warning"/>
+        <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginStart="16dp">
+            <TextView android:id="@+id/stoppingTitle" style="@style/Text.Body" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textStyle="bold" android:text="@string/stopping_title"/>
+            <TextView android:id="@+id/stoppingHint" style="@style/Text.Label" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/nextCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:background="@drawable/bg_card" android:padding="32dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+            <FrameLayout android:layout_width="84dp" android:layout_height="84dp" android:background="@drawable/bg_circle_accent_soft">
+                <ImageView android:id="@+id/nextIcon" android:layout_width="44dp" android:layout_height="44dp" android:layout_gravity="center" android:src="@drawable/ic_flag" android:tint="@color/accent"/>
+            </FrameLayout>
+            <TextView android:id="@+id/nextLabel" style="@style/Text.Label" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="18dp" android:text="@string/next_briefing"/>
+            <TextView android:id="@+id/nextCountdown" style="@style/Text.Display" android:textSize="84sp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/accent"/>
+        </LinearLayout>
+        <TextView android:id="@+id/nextTitle" style="@style/Text.Title" android:textSize="40sp" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:maxLines="1" android:ellipsize="end"/>
+        <TextView android:id="@+id/nextPreview" style="@style/Text.Body" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:textColor="@color/basic_200" android:maxLines="2" android:ellipsize="end"/>
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/spokenRow" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="top" android:layout_marginTop="20dp" android:paddingStart="8dp" android:paddingEnd="8dp">
+        <ImageView android:layout_width="36dp" android:layout_height="36dp" android:layout_marginTop="4dp" android:src="@drawable/ic_volume" android:tint="@color/text_secondary"/>
+        <TextView android:id="@+id/driveGuidance" style="@style/Text.Body" android:textSize="28sp" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:maxLines="3" android:ellipsize="end" android:textColor="@color/basic_200"/>
+    </LinearLayout>
+    <kr.lastmile.app.ui.RouteProgressView android:id="@+id/routeProgress" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:paddingStart="8dp" android:paddingEnd="8dp"/>
+</LinearLayout>

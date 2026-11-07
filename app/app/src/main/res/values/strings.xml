@@ -37,7 +37,7 @@
     <string name="state_driving">안내 중</string>
     <string name="state_stopping">정차 중</string>
     <string name="state_arrived">도착</string>
-    <string name="parking_curb">정차</string>
+    <string name="parking_curb">정문</string>
     <string name="parking_valet">발렛</string>
     <string name="parking_lot">주차</string>
     <string name="remain_fmt_km">%.1f km</string>
@@ -55,6 +55,11 @@
     <string name="map_credit">© OpenFreeMap · OpenMapTiles · OpenStreetMap</string>
     <string name="meeting_point">만남</string>
     <string name="drop_label">지난번</string>
+    <string name="boarding_wait_title">승하차 기다리는 중</string>
+    <string name="boarding_wait_hint">승객석 문이 열렸다 닫히면 끝나요. 내린 자리는 다음 방문 때 알려 드려요.</string>
+    <string name="boarding_done_title">승하차 끝</string>
+    <string name="boarding_done_hint">문이 닫혔어요. 다음에 오면 이 자리를 먼저 알려 드려요.</string>
+    <string name="eta_arrive_suffix">\u0020도착</string>
     <string name="dev_clear_drops">내린 자리 지우기</string>
     <string name="curb_allowed_title">정차 가능 시간</string>
     <string name="curb_forbidden_title">정차 금지 구역</string>

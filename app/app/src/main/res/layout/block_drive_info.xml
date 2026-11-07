@@ -1,18 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 안내 중 오른쪽 열(전체 창): 도착 구역 지도 → 목적 칩 → 사실 3개(정문·주차·지난번) → (조건부) 충전 카드 → 마중 상태 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
-    <!-- 도착 구역 스케치 + 정차·주차 사실 -->
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:background="@drawable/bg_card" android:padding="20dp" android:paddingBottom="28dp">
-        <FrameLayout android:id="@+id/mapSlotDrive" android:layout_width="match_parent" android:layout_height="500dp" android:background="@drawable/bg_map" android:clipToOutline="true">
-            <kr.lastmile.app.ui.ZoneSketchView android:id="@+id/zoneSketch" android:layout_width="match_parent" android:layout_height="match_parent"/>
-            <include layout="@layout/view_map_glass"/>
-        </FrameLayout>
-        <include layout="@layout/view_purpose" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp"/>
-        <View android:layout_width="match_parent" android:layout_height="2dp" android:background="@color/outline" android:layout_marginTop="16dp" android:layout_marginBottom="18dp"/>
-        <include android:id="@+id/factCurb" layout="@layout/row_fact"/>
-        <include android:id="@+id/factValet" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"/>
-        <include android:id="@+id/factParking" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp"/>
-        <include android:id="@+id/factDrop" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:visibility="gone"/>
-        <include android:id="@+id/factBattery" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:visibility="gone"/>
+    <FrameLayout android:id="@+id/mapSlotDrive" android:layout_width="match_parent" android:layout_height="520dp" android:background="@drawable/bg_map" android:clipToOutline="true">
+        <kr.lastmile.app.ui.ZoneSketchView android:id="@+id/zoneSketch" android:layout_width="match_parent" android:layout_height="match_parent"/>
+        <include layout="@layout/view_map_glass"/>
+    </FrameLayout>
+    <include layout="@layout/view_purpose" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/gutter"/>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:background="@drawable/bg_card" android:paddingStart="32dp" android:paddingEnd="32dp" android:paddingTop="28dp" android:paddingBottom="28dp" android:layout_marginTop="@dimen/gutter">
+        <include android:id="@+id/factParking" layout="@layout/row_fact"/>
+        <include android:id="@+id/factCurb" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="22dp"/>
+        <include android:id="@+id/factDrop" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:visibility="gone"/>
+        <include android:id="@+id/factBattery" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:visibility="gone"/>
+        <include android:id="@+id/factValet" layout="@layout/row_fact" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone"/>
     </LinearLayout>
     <!-- 머무는 동안 충전 추천 (배터리 낮고 후보가 있을 때만) -->
     <LinearLayout android:id="@+id/chargerCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:visibility="gone"
@@ -22,14 +21,14 @@
             <TextView android:id="@+id/chargerTitle" style="@style/Text.Body" android:layout_width="match_parent" android:layout_height="wrap_content" android:textStyle="bold" android:maxLines="1" android:ellipsize="end"/>
             <TextView android:id="@+id/chargerText" style="@style/Text.Label" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:maxLines="3" android:ellipsize="end"/>
         </LinearLayout>
-        <Button android:id="@+id/chargerButton" style="@style/Button.Secondary" android:layout_width="wrap_content" android:layout_height="72dp" android:minWidth="200dp" android:text="@string/charger_add_waypoint"/>
+        <Button android:id="@+id/chargerButton" style="@style/Button.Secondary" android:layout_width="wrap_content" android:layout_height="76dp" android:minWidth="220dp" android:text="@string/charger_add_waypoint"/>
     </LinearLayout>
     <LinearLayout android:id="@+id/meetingStatusCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical"
-        android:background="@drawable/bg_card" android:paddingStart="28dp" android:paddingEnd="28dp" android:paddingTop="22dp" android:paddingBottom="22dp" android:layout_marginTop="@dimen/gutter">
-        <ImageView android:id="@+id/meetingStatusIcon" android:layout_width="44dp" android:layout_height="44dp" android:src="@drawable/ic_message" android:tint="@color/text_primary"/>
-        <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginStart="20dp">
-            <TextView android:id="@+id/meetingStatusTitle" style="@style/Text.Body" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textStyle="bold" android:text="@string/meeting_mode"/>
-            <TextView android:id="@+id/meetingStatusText" style="@style/Text.Label" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:maxLines="2" android:ellipsize="end"/>
+        android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingTop="20dp" android:paddingBottom="8dp">
+        <ImageView android:id="@+id/meetingStatusIcon" android:layout_width="36dp" android:layout_height="36dp" android:src="@drawable/ic_message" android:tint="@color/text_tertiary"/>
+        <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginStart="16dp" android:gravity="center_vertical">
+            <TextView android:id="@+id/meetingStatusTitle" style="@style/Text.Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textStyle="bold" android:textColor="@color/text_primary" android:text="@string/meeting_mode"/>
+            <TextView android:id="@+id/meetingStatusText" style="@style/Text.Label" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:maxLines="2" android:ellipsize="end"/>
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

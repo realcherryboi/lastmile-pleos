@@ -6,13 +6,13 @@
     <dimen name="card_padding">32dp</dimen>
     <dimen name="button_height">96dp</dimen>
     <dimen name="button_radius">48dp</dimen>
-    <dimen name="chip_height">60dp</dimen>
+    <dimen name="chip_height">64dp</dimen>
     <dimen name="icon_button">88dp</dimen>
     <dimen name="tile_height">200dp</dimen>
     <dimen name="text_display">120sp</dimen>
-    <dimen name="text_headline">56sp</dimen>
-    <dimen name="text_title">40sp</dimen>
+    <dimen name="text_headline">64sp</dimen>
+    <dimen name="text_title">44sp</dimen>
     <dimen name="text_body">30sp</dimen>
-    <dimen name="text_label">24sp</dimen>
-    <dimen name="text_caption">20sp</dimen>
+    <dimen name="text_label">26sp</dimen>
+    <dimen name="text_caption">24sp</dimen>
 </resources>
