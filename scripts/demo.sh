@@ -4,6 +4,8 @@
 #       Virtual Console 브리지는 "브라우저 세션" 하트비트(POST /browser/session, 3초 타임아웃)가 있을 때만 PUT 을 받는다.
 #       이 스크립트는 백그라운드에서 1.5초마다 세션을 갱신하므로 브라우저를 열어 둘 필요가 없다.
 #
+# 주행 중 화면 구조(대표 결정 11/9): **내비 전체 창 + 라스트마일 헤드업 알림**. 라스트마일은 뒤에서 말하고, 말한 문장은
+#   내비 위 왼쪽 위 헤드업 카드로 5초 보인다(docs/emulator-setup.md §12). 분할 창은 쓰지 않는다. 도착(기어 P) 때만 앱이 앞으로 나온다.
 # 주행은 GPS 주입이 아니라 **내비 자체의 주행 시뮬레이션**으로 한다(docs/emulator-setup.md §11).
 #   안내 중 내비 화면 오른쪽 아래, 볼륨 버튼과 설정 버튼 사이 빈 곳(2460,1176)을 길게 누르면 패널이 뜨고
 #   시작(2141,772)을 누르면 내비가 스스로 경로를 달린다. 패널은 X(2435,592)로 닫아도 계속 달린다.
@@ -28,10 +30,10 @@ $ADB shell pm grant --user "$U" $APP android.permission.POST_NOTIFICATIONS 2>/de
 remain(){ $ADB logcat -d -v brief 2>/dev/null | grep -oE "remainDistance:[0-9]+" | tail -1 | cut -d: -f2; }
 # 내비가 DIST m 이하가 될 때까지 기다린다 (최대 MAX 초)
 wait_until(){ local dist=$1 max=${2:-240} t=0 r; while [ $t -lt $max ]; do r=$(remain); [ -n "$r" ] && [ "$r" -le "$dist" ] && { echo "   내비 남은 거리 ${r} m"; return 0; }; sleep 3; t=$((t+3)); done; echo "   (시간 초과: 남은 거리 ${r:-?} m)"; return 0; }
-# 내비 전체 창에서 주행 시뮬레이션 시작 → 패널 닫기
-simulate(){ $ADB shell input swipe 2460 1176 2460 1176 1300; sleep 2; $ADB shell input tap 2141 772; sleep 1; $ADB shell input tap 2435 592; sleep 1; }
-# 분할 화면 (대표 결정: 내비 왼쪽 · 라스트마일 오른쪽). 창 바를 끌면 "그때 앞에 있던 앱"이 왼쪽, 직전 앱이 오른쪽으로 간다.
-split(){ $ADB shell am start -n $APP/.ui.MainActivity >/dev/null 2>&1; sleep 2; $ADB shell input tap 1157 1368; sleep 2.5; $ADB shell input swipe 2545 720 1700 720 600; sleep 3; }
+# 내비 전체 창에서 주행 시뮬레이션 시작 → 패널 닫기. 내비가 아직 경로 선택 화면(안내 시작 카운트다운)이면 길게 눌러도 패널이 안 뜨므로,
+# 남은 거리가 줄기 시작할 때까지 최대 3번 다시 시도한다.
+simulate(){ local i r0 r1; for i in 1 2 3; do r0=$(remain); $ADB shell input swipe 2460 1176 2460 1176 1300; sleep 2; $ADB shell input tap 2141 772; sleep 1; $ADB shell input tap 2435 592; sleep 7; r1=$(remain); [ -n "$r0" ] && [ -n "$r1" ] && [ "$r1" -lt "$r0" ] && return 0; echo "   (시뮬레이션이 안 돌아 다시 시도 $i: ${r0:-?} → ${r1:-?} m)"; sleep 3; done; }
+# 라스트마일을 전체 창으로 앞에 (분할 상태였다면 창 바를 오른쪽 끝까지 끌어 전체로)
 front_full(){ $ADB shell am start -n $APP/.ui.MainActivity >/dev/null 2>&1; sleep 2; $ADB shell input swipe 1706 720 2545 720 500; sleep 2.5; }
 
 step "초기화: 출발 위치, 기어 D, EV 18%, 이전 안내 종료, 내린 자리 기억 초기화"
@@ -53,19 +55,18 @@ $ADB shell input tap 1978 797; sleep 2.5; $ADB shell input tap 2178 797; sleep 2
 $ADB shell input tap 2179 1212; sleep 9                                   # 안내 시작 → 내비가 앞으로(전체 창, 경로 표시) + 3 km 브리핑
 shot 02_nav_start
 
-step "내비 주행 시뮬레이션 시작 → 분할 화면(왼쪽 내비 · 오른쪽 라스트마일)"
+step "내비 주행 시뮬레이션 시작 (내비 전체 창 그대로 · 라스트마일은 뒤에서 음성 + 헤드업)"
 simulate
-split
-shot 03_split
+sleep 1; shot 03_nav_driving
 
-step "1 km → 300 m (내비 남은 거리로 브리핑)"
-wait_until 1000 150; sleep 4; shot 04_1km
-wait_until 300 120; sleep 3; shot 05_300m
+step "1 km → 300 m (내비 남은 거리로 브리핑 → 헤드업 카드가 내비 위에 5초)"
+wait_until 1000 150; sleep 1.5; shot 04_1km
+wait_until 300 120; sleep 1.5; shot 05_300m
 
-step "우측 방향지시등 → 잠시 정차(STOPPING) 배너"
-curl -s -X PUT "$VC/vehicle/turn-signal?mode=BlinkRight" >/dev/null; sleep 4; shot 06_stopping; curl -s -X PUT "$VC/vehicle/turn-signal?mode=Off" >/dev/null
+step "우측 방향지시등 → 잠시 정차(STOPPING) 헤드업"
+curl -s -X PUT "$VC/vehicle/turn-signal?mode=BlinkRight" >/dev/null; sleep 2; shot 06_stopping; curl -s -X PUT "$VC/vehicle/turn-signal?mode=Off" >/dev/null
 
-step "내비 도착 → 기어 P → ARRIVED (앱이 스스로 앞으로 나옴 + 주차장·도착 구역 지도)"
+step "내비 도착 → 기어 P → ARRIVED (앱이 스스로 전체 창으로 앞에 나옴 + 주차장·도착 구역 지도)"
 wait_until 0 90; sleep 3
 curl -s -X PUT "$VC/vehicle/gear?gear=Park" >/dev/null; sleep 6
 $ADB emu geo fix 127.10404 37.39967 >/dev/null; sleep 3   # 내린 자리 기억용 좌표 (정문 22 m 지난 자리)
@@ -76,15 +77,13 @@ shot 08_done
 
 step "두 번째 방문: 완료 → 같은 목적지 다시 선택 → 카드에 '지난번 내린 자리' → 안내 시작 → 시뮬레이션 → 300 m에서 '지난번엔 …에서 내렸어요'"
 curl -s -X PUT "$VC/vehicle/gear?gear=Drive" >/dev/null
-front_full
-$ADB shell input tap 1693 1212; sleep 2.5                     # 완료
+$ADB shell input tap 1693 1212; sleep 2.5                     # 완료 (앱이 이미 전체 창으로 앞에 있음)
 $ADB emu geo fix 127.0947 37.4127 >/dev/null; sleep 1         # 출발 위치로 돌려놓는다
 $ADB shell input tap 1364 450; sleep 4                        # 목록 첫 행 → 상세 카드(지난번 행 + 지도 핀)
 shot 09_card_revisit
 $ADB logcat -c
-$ADB shell input tap 2179 1212; sleep 10                      # 안내 시작 → 내비가 앞 (3 km 브리핑)
+$ADB shell input tap 2179 1212; sleep 10                      # 안내 시작 → 내비가 앞 (출발 브리핑 헤드업)
 simulate
-split
-wait_until 1000 150; sleep 4; shot 10_1km_revisit
-wait_until 300 120; sleep 8; shot 11_300m_revisit             # "… 지난번엔 정문 지나서 20미터에서 내렸어요."
+wait_until 1000 150; sleep 1.5; shot 10_1km_revisit
+wait_until 300 120; sleep 1.5; shot 11_300m_revisit           # "… 지난번엔 정문 지나서 20미터에서 내렸어요."
 echo; echo "스크린샷: $SHOT"

@@ -168,6 +168,8 @@ class TripEngine private constructor(
 
     private val prefs by lazy { context.getSharedPreferences("lastmile", Context.MODE_PRIVATE) }
     private val CH_GUIDANCE = "guidance"; private val NOTI_GUIDANCE = 1001
+    private val NOTI_SHOW_MS = 5_000L        // 헤드업 표시 시간 (내비 TBT 패널을 가리므로 짧게)
+    private val NOTI_BODY_CHARS = 70         // 헤드업 본문 2줄 분량
 
     /**
      * 승객석 문이 열린 순간의 위치를 "내린 자리"로 기억한다 (Door + FusedLocation). 도착(ARRIVED)이나 잠시 정차(STOPPING) 중,
@@ -291,7 +293,7 @@ class TripEngine private constructor(
 
     private fun dispatch(event: TripEvent) {
         for (a in machine.handle(event)) when (a) {
-            is TripAction.Speak -> say(a.text)
+            is TripAction.Speak -> say(a.text, a.headline)
             is TripAction.Notify -> sender.send(a.text) { addLog("메시지(${a.kind}): $it") }.also { _ui.value = _ui.value.copy(lastMessage = a.text, messagesSent = _ui.value.messagesSent + a.kind) }
             is TripAction.StateChanged -> { addLog("상태 ${a.from} → ${a.to}"); if (a.to == TripState.ARRIVED) { _ui.value = _ui.value.copy(arrivedAtMs = System.currentTimeMillis()); bringToFront() } }
         }
@@ -314,25 +316,37 @@ class TripEngine private constructor(
         }.onFailure { addLog("앱 전면 전환 실패: ${it.message}") }
     }
 
-    private fun say(text: String) { speaker.speak(text); _ui.value = _ui.value.copy(lastSpoken = text); addLog("🔊 $text"); notifyGuidance(text) }
+    private fun say(text: String, headline: String = "") { speaker.speak(text); _ui.value = _ui.value.copy(lastSpoken = text); addLog("🔊 $text"); notifyGuidance(text, headline) }
 
     /**
-     * 음성 안내를 시스템 헤드업 알림으로도 띄운다 (실험 11/9): 내비가 전체 창일 때 라스트마일이 뒤에 있어도 한 줄 안내가 내비 위에 잠깐 보이게.
-     * CarSystemUI 는 중요도 HIGH 알림을 HeadsUpNotification 창에 띄운다. 카테고리는 NAVIGATION(주행 중 허용 카테고리). 소리·진동 없음, 8초 뒤 자동 소멸.
+     * 음성 안내를 시스템 헤드업 알림으로도 띄운다 (대표 결정 11/9: 주행 중 구조 = 내비 전체 창 + 헤드업).
+     * 내비가 전체 창이라 라스트마일이 뒤에 있어도, 말한 문장이 내비 위 왼쪽 위 카드로 5초 보인다.
+     * CarSystemUI 는 중요도 HIGH 알림을 HeadsUpNotification 창에 띄운다. 카테고리 NAVIGATION(주행 중 허용), 소리·진동 없음.
+     * 카드는 제목 + 본문 2줄이라 제목은 headline("1 km · 주차장 안내"), 본문은 문장 단위로 70자 안에 잘라 넣는다.
+     * 앱 화면이 떠 있을 때(도착 화면 등)는 같은 글을 두 번 보일 필요가 없어 올리지 않는다.
      */
-    private fun notifyGuidance(text: String) = runCatching {
+    private fun notifyGuidance(text: String, headline: String) = runCatching {
+        if (kr.lastmile.app.LastMileApp.activityResumed) return@runCatching
         val nm = context.getSystemService(android.app.NotificationManager::class.java) ?: return@runCatching
         nm.createNotificationChannel(android.app.NotificationChannel(CH_GUIDANCE, "주행 안내", android.app.NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "3 km·1 km·300 m·정차·도착 음성 안내를 글로도 보여 줍니다"; setSound(null, null); enableVibration(false)
+            description = "출발·1 km·300 m·정차·도착 음성 안내를 내비 위에 글로도 보여 줍니다"; setSound(null, null); enableVibration(false)
         })
         val open = android.app.PendingIntent.getActivity(context, 0, android.content.Intent(context, kr.lastmile.app.ui.MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK), android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT)
         val n = android.app.Notification.Builder(context, CH_GUIDANCE)
-            .setSmallIcon(kr.lastmile.app.R.drawable.ic_flag).setContentTitle("라스트마일").setContentText(text)
-            .setStyle(android.app.Notification.BigTextStyle().bigText(text))
-            .setCategory(android.app.Notification.CATEGORY_NAVIGATION).setOnlyAlertOnce(false).setAutoCancel(true).setTimeoutAfter(8_000)
+            .setSmallIcon(kr.lastmile.app.R.drawable.ic_flag).setContentTitle(headline.ifBlank { "라스트마일" }).setContentText(notifyBody(text))
+            .setCategory(android.app.Notification.CATEGORY_NAVIGATION).setOnlyAlertOnce(false).setAutoCancel(true).setTimeoutAfter(NOTI_SHOW_MS)
             .setContentIntent(open).build()
         nm.notify(NOTI_GUIDANCE, n)
     }.onFailure { addLog("알림 실패: ${it.message}") }.let { }
+
+    /** 헤드업 본문: 2줄(약 70자)에 들어가도록 문장 단위로 자른다. 첫 문장이 이미 길면 첫 문장만. */
+    internal fun notifyBody(text: String, max: Int = NOTI_BODY_CHARS): String {
+        if (text.length <= max) return text
+        val parts = text.split(Regex("(?<=[.!?])\\s+")).filter { it.isNotBlank() }
+        val sb = StringBuilder()
+        for (p in parts) { if (sb.isEmpty() || sb.length + 1 + p.length <= max) { if (sb.isNotEmpty()) sb.append(' '); sb.append(p) } else break }
+        return sb.toString()
+    }
 
     /** 소스·어댑터가 상태를 보고하는 창구 (화면 상단 상태줄 + 로그). */
     fun status(key: String, text: String) = post { sourceStatus[key] = text; _ui.value = _ui.value.copy(sources = sourceStatus.toMap()); addLog("[$key] $text") }
