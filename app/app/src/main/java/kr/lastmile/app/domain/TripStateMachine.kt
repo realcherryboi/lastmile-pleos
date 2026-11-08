@@ -6,6 +6,12 @@ enum class GearPosition { P, R, N, D, UNKNOWN }
 
 enum class TurnSide { OFF, LEFT, RIGHT }
 
+/**
+ * 이번 경로의 이정표 하나. 경로가 짧으면(3 km 미만) 첫 이정표는 "출발"이 되고, 출발점과 300 m 안에 겹치는 이정표는 빠진다.
+ * state = 그 이정표를 지나면 들어가는 상태 (도착은 ARRIVED).
+ */
+data class Milestone(val label: String, val meters: Int, val state: TripState)
+
 /** 외부(내비·차량·위치)에서 들어오는 사실. 상태머신은 이것만 본다. */
 sealed class TripEvent {
     data class DestinationSet(val destination: Destination) : TripEvent()
@@ -47,6 +53,25 @@ class TripStateMachine {
     var evSoc: Int = -1                      // 마지막 배터리 잔량 (-1 = 모름)
         private set
 
+    /** 경로 전체 거리: 목적지 설정 뒤 처음 들어온 남은 거리 (-1 = 아직 모름). 3 km 미만이면 첫 브리핑이 "출발 브리핑"이 된다. */
+    var routeMeters: Int = -1
+        private set
+    /** 출발점과 이만큼도 안 떨어진 이정표는 따로 말하지 않는다 (첫 브리핑 직후에 또 말하게 되므로). */
+    private val mergeGapM = 300
+    val skip1km: Boolean get() = routeMeters in 0 until 1000 + mergeGapM
+    val skip300m: Boolean get() = routeMeters in 0 until 300 + mergeGapM
+
+    /** 이번 경로의 이정표 목록 (진행 바·다음 안내 카드용). 경로 거리를 모르면 기본 3 km·1 km·300 m·도착. */
+    val milestones: List<Milestone>
+        get() {
+            val out = mutableListOf<Milestone>()
+            out += if (routeMeters in 0..3000) Milestone("출발", routeMeters, TripState.BRIEF_3KM) else Milestone("3 km", 3000, TripState.BRIEF_3KM)
+            if (!skip1km) out += Milestone("1 km", 1000, TripState.BRIEF_1KM)
+            if (!skip300m) out += Milestone("300 m", 300, TripState.BRIEF_300M)
+            out += Milestone("도착", 0, TripState.ARRIVED)
+            return out
+        }
+
     private var nearDestination = false      // navi arrived or geofence enter
     private var parked = false               // gear P or parking brake
     private var doorOpened = false           // ARRIVED 이후 문이 열린 적 있음
@@ -65,17 +90,21 @@ class TripStateMachine {
             }
             is TripEvent.RemainDistance -> if (d != null) {
                 lastRemainMin = maxOf(1, event.remainSec / 60)
+                if (routeMeters < 0 && event.meters > 0) routeMeters = event.meters   // 첫 남은 거리 = 경로 길이 → 이정표 계획 확정
                 when {
+                    // 3 km 지점 브리핑. 경로가 3 km 미만이면 출발 직후 바로 나간다(출발 브리핑) — 문장은 "도착 N분 전이에요"라 그대로 맞는다.
                     state == TripState.ARMED && event.meters <= 3000 -> {
                         purposeChangedSince3km = false
                         transition(TripState.BRIEF_3KM, out)
                         out += TripAction.Speak(Briefing.at3km(d, lastRemainMin, evSoc, purpose))
                         if (meetingMode) out += TripAction.Notify("eta", Briefing.meetingEta(d, lastRemainMin))
                     }
-                    state == TripState.BRIEF_3KM && event.meters <= 1000 -> {
+                    // 1 km. 출발점이 1.3 km 안이면 건너뛴다(첫 브리핑에서 막 규칙을 말했는데 곧바로 또 말하게 되므로).
+                    state == TripState.BRIEF_3KM && !skip1km && event.meters <= 1000 -> {
                         transition(TripState.BRIEF_1KM, out); out += TripAction.Speak(Briefing.at1km(d, purpose, purposeChangedSince3km))
                     }
-                    state == TripState.BRIEF_1KM && event.meters <= 300 -> {
+                    // 300 m. 1 km 를 건너뛰었으면 첫 브리핑 상태에서 바로 온다. 출발점이 600 m 안이면 이것도 건너뛴다.
+                    (state == TripState.BRIEF_1KM || state == TripState.BRIEF_3KM && skip1km) && !skip300m && event.meters <= 300 -> {
                         transition(TripState.BRIEF_300M, out); out += TripAction.Speak(Briefing.at300m(d, purpose))
                     }
                 }
@@ -84,7 +113,7 @@ class TripStateMachine {
             is TripEvent.GeofenceEnter -> { nearDestination = event.entered || nearDestination; checkArrival(d, out) }
             is TripEvent.Hazard -> if (d != null && event.on) stopping(d, out)
             is TripEvent.BrakeHeld -> if (d != null && event.held) stopping(d, out)
-            is TripEvent.TurnSignal -> if (d != null && event.side == TurnSide.RIGHT && state == TripState.BRIEF_300M) {
+            is TripEvent.TurnSignal -> if (d != null && event.side == TurnSide.RIGHT && inLastStretch()) {
                 stopping(d, out)
             }
             is TripEvent.Gear -> { parked = event.position == GearPosition.P; checkArrival(d, out) }
@@ -98,8 +127,11 @@ class TripStateMachine {
         return out
     }
 
+    /** 마지막 300 m 구간인가 — 300 m 이정표를 지났거나, 경로가 짧아 그 이정표가 아예 없는 경우 */
+    private fun inLastStretch() = state == TripState.BRIEF_300M || skip300m && state in listOf(TripState.BRIEF_3KM, TripState.BRIEF_1KM)
+
     private fun stopping(d: Destination, out: MutableList<TripAction>) {
-        if (state in listOf(TripState.BRIEF_300M, TripState.BRIEF_1KM)) { transition(TripState.STOPPING, out); out += TripAction.Speak(Briefing.stopping(d, purpose)) }
+        if (state in listOf(TripState.BRIEF_300M, TripState.BRIEF_1KM) || skip1km && state == TripState.BRIEF_3KM) { transition(TripState.STOPPING, out); out += TripAction.Speak(Briefing.stopping(d, purpose)) }
     }
 
     private fun checkArrival(d: Destination?, out: MutableList<TripAction>) {
@@ -117,5 +149,5 @@ class TripStateMachine {
     }
 
     /** 기어 상태(parked)·배터리는 물리 상태라 목적지 변경에도 유지한다. 출발 시 P→D 이벤트가 오면 자연히 해제된다. */
-    private fun reset() { destination = null; nearDestination = false; doorOpened = false; lastRemainMin = 0 }
+    private fun reset() { destination = null; nearDestination = false; doorOpened = false; lastRemainMin = 0; routeMeters = -1 }
 }

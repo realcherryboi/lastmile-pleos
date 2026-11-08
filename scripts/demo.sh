@@ -22,6 +22,7 @@ $ADB forward tcp:8088 tcp:8088 >/dev/null
 trap 'kill $HB 2>/dev/null' EXIT
 sleep 2
 U=$($ADB shell am get-current-user | tr -d "\r"); $ADB shell pm grant --user "$U" $APP pleos.car.permission.FUSED_LOCATION 2>/dev/null || true
+$ADB shell pm grant --user "$U" $APP android.permission.POST_NOTIFICATIONS 2>/dev/null || true   # 음성 안내를 헤드업 알림으로도 띄운다 (docs/emulator-setup.md §12)
 
 # 내비 남은 거리(m). 내비 프로세스가 NavigationUseCase remainDistance:NNNN 을 찍는다.
 remain(){ $ADB logcat -d -v brief 2>/dev/null | grep -oE "remainDistance:[0-9]+" | tail -1 | cut -d: -f2; }

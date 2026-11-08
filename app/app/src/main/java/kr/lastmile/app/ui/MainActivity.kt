@@ -45,6 +45,7 @@ import kr.lastmile.app.domain.TripPurpose
 import kr.lastmile.app.source.PublicChargerSource
 import kr.lastmile.app.domain.GearPosition
 import kr.lastmile.app.domain.TripEngine
+import kr.lastmile.app.domain.Milestone
 import kr.lastmile.app.domain.TripState
 import kr.lastmile.app.domain.TurnSide
 import kr.lastmile.app.domain.UiState
@@ -297,16 +298,25 @@ class MainActivity : AppCompatActivity() {
     private data class Next(val icon: Int, val title: String, val preview: String, val inMeters: Int)
     private fun nextOf(s: UiState, d: Destination): Next {
         val m = s.remainMeters; val min = maxOf(1, s.remainSec / 60)
-        return when (s.state) {
-            TripState.ARMED -> Next(R.drawable.ic_bell, "3 km 지점 · 도착 전 브리핑", Briefing.at3km(d, if (s.remainSec > 0) min else 10, s.evSoc, s.purpose), if (m > 3000) m - 3000 else -1)
-            TripState.BRIEF_3KM -> Next(R.drawable.ic_flag, if (s.purpose == TripPurpose.PARK) "1 km 지점 · 주차장 안내" else "1 km 지점 · 정차 안내", Briefing.at1km(d, s.purpose), if (m > 1000) m - 1000 else -1)
-            TripState.BRIEF_1KM -> Next(R.drawable.ic_parking, "300 m 지점 · 진입 안내", Briefing.at300m(d, s.purpose), if (m > 300) m - 300 else -1)
-            TripState.BRIEF_300M -> Next(R.drawable.ic_check, "도착 · 기어 P", if (s.meetingMode && "arrived" !in s.messagesSent) "도착하면 ${s.recipientName.ifBlank { s.recipientPhone }}에게 알림을 보내요" else "정차 후 기어를 P로 두면 도착 처리돼요", if (m > 0) m else -1)
-            TripState.STOPPING -> Next(R.drawable.ic_clock, "잠시 정차 중", when { s.purpose == TripPurpose.PARK -> "주차 목적 · ${d.parkingName.ifBlank { "주차장" }} 입구로 안내"; d.curbsideAllowed -> "${d.curbsideLimitMin}분 넘으면 주차장으로 안내해요"; else -> "정차 금지 구역 · ${d.parkingName}로 안내" }, -1)
-            else -> Next(R.drawable.ic_flag, "", "", -1)
+        if (s.state == TripState.STOPPING) return Next(R.drawable.ic_clock, "잠시 정차 중", when { s.purpose == TripPurpose.PARK -> "주차 목적 · ${d.parkingName.ifBlank { "주차장" }} 입구로 안내"; d.curbsideAllowed -> "${d.curbsideLimitMin}분 넘으면 주차장으로 안내해요"; else -> "정차 금지 구역 · ${d.parkingName}로 안내" }, -1)
+        // 이정표 계획에서 아직 안 지난 첫 이정표가 '다음 안내'. 경로가 3 km 미만이면 첫 이정표가 "출발"(바로 나가는 브리핑)이고, 출발점과 겹치는 1 km·300 m 는 계획에서 빠져 있다.
+        val plan = s.milestones.ifEmpty { listOf(Milestone("3 km", 3000, TripState.BRIEF_3KM), Milestone("1 km", 1000, TripState.BRIEF_1KM), Milestone("300 m", 300, TripState.BRIEF_300M), Milestone("도착", 0, TripState.ARRIVED)) }
+        val next = plan.getOrNull(passedOf(s)) ?: return Next(R.drawable.ic_flag, "", "", -1)
+        val inM = if (next.meters > 0 && m > next.meters) m - next.meters else -1
+        return when (next.state) {
+            TripState.BRIEF_3KM -> Next(R.drawable.ic_bell, if (next.label == "출발") "출발 · 도착 전 브리핑" else "3 km 지점 · 도착 전 브리핑", Briefing.at3km(d, if (s.remainSec > 0) min else 10, s.evSoc, s.purpose), inM)
+            TripState.BRIEF_1KM -> Next(R.drawable.ic_flag, if (s.purpose == TripPurpose.PARK) "1 km 지점 · 주차장 안내" else "1 km 지점 · 정차 안내", Briefing.at1km(d, s.purpose), inM)
+            TripState.BRIEF_300M -> Next(R.drawable.ic_parking, "300 m 지점 · 진입 안내", Briefing.at300m(d, s.purpose), inM)
+            else -> Next(R.drawable.ic_check, "도착 · 기어 P", if (s.meetingMode && "arrived" !in s.messagesSent) "도착하면 ${s.recipientName.ifBlank { s.recipientPhone }}에게 알림을 보내요" else "정차 후 기어를 P로 두면 도착 처리돼요", if (m > 0) m else -1)
         }
     }
-    private fun passedOf(s: TripState) = when (s) { TripState.BRIEF_3KM -> 1; TripState.BRIEF_1KM -> 2; TripState.BRIEF_300M, TripState.STOPPING -> 3; TripState.ARRIVED, TripState.DONE -> 4; else -> 0 }
+    /** 지난 이정표 수 = 계획에서 현재 상태(또는 그 앞 상태)의 위치 + 1. STOPPING 은 300 m 를 지난 것으로, DONE 은 도착으로 센다. */
+    private fun passedOf(s: UiState): Int {
+        val plan = s.milestones.ifEmpty { return when (s.state) { TripState.BRIEF_3KM -> 1; TripState.BRIEF_1KM -> 2; TripState.BRIEF_300M, TripState.STOPPING -> 3; TripState.ARRIVED, TripState.DONE -> 4; else -> 0 } }
+        val st = when (s.state) { TripState.STOPPING -> plan.lastOrNull { it.state != TripState.ARRIVED }?.state ?: TripState.BRIEF_300M; TripState.DONE -> TripState.ARRIVED; else -> s.state }
+        val i = plan.indexOfFirst { it.state == st }
+        return if (i >= 0) i + 1 else 0
+    }
 
     // ---------- ARRIVED ----------
     private fun bindArrived() {
@@ -486,7 +496,7 @@ class MainActivity : AppCompatActivity() {
         else if (remainNum.target <= 0f || s.state == TripState.ARMED && lastState != s.state) remainNum.snapTo(s.remainMeters.toFloat()) else remainNum.animateTo(s.remainMeters.toFloat())
         dr.findViewById<TextView>(R.id.driveEta).text = if (s.remainSec > 0) getString(R.string.eta_fmt, maxOf(1, s.remainSec / 60)) else "—"
         dr.findViewById<TextView>(R.id.driveClock).text = if (s.remainSec > 0) clock.format(Date(System.currentTimeMillis() + s.remainSec * 1000L)) else "—"
-        dr.findViewById<RouteProgressView>(R.id.routeProgress).apply { remainMeters = s.remainMeters; passed = passedOf(s.state) }
+        dr.findViewById<RouteProgressView>(R.id.routeProgress).apply { milestones = s.milestones; remainMeters = s.remainMeters; passed = passedOf(s) }
         dr.findViewById<ZoneSketchView>(R.id.zoneSketch).apply { destination = d; arrived = false }
 
         val spoken = dr.findViewById<TextView>(R.id.driveGuidance)

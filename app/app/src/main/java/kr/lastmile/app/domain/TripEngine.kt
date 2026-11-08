@@ -46,6 +46,7 @@ data class UiState(
     val naviChargingStops: List<NaviChargingStop> = emptyList(),   // 내비 EV 플래너 충전 경유지
     val chargerWaypointAdded: Boolean = false,   // 추천 충전소를 경유지로 넣음
     val purpose: TripPurpose = TripPurpose.STOP, // 이번 목적지에서 할 일
+    val milestones: List<Milestone> = emptyList(),   // 이번 경로의 이정표 (3 km 또는 출발 · 1 km · 300 m · 도착; 짧은 경로는 일부가 빠진다)
 )
 
 /**
@@ -166,6 +167,7 @@ class TripEngine private constructor(
     }
 
     private val prefs by lazy { context.getSharedPreferences("lastmile", Context.MODE_PRIVATE) }
+    private val CH_GUIDANCE = "guidance"; private val NOTI_GUIDANCE = 1001
 
     /**
      * 승객석 문이 열린 순간의 위치를 "내린 자리"로 기억한다 (Door + FusedLocation). 도착(ARRIVED)이나 잠시 정차(STOPPING) 중,
@@ -293,7 +295,9 @@ class TripEngine private constructor(
             is TripAction.Notify -> sender.send(a.text) { addLog("메시지(${a.kind}): $it") }.also { _ui.value = _ui.value.copy(lastMessage = a.text, messagesSent = _ui.value.messagesSent + a.kind) }
             is TripAction.StateChanged -> { addLog("상태 ${a.from} → ${a.to}"); if (a.to == TripState.ARRIVED) { _ui.value = _ui.value.copy(arrivedAtMs = System.currentTimeMillis()); bringToFront() } }
         }
-        _ui.value = _ui.value.copy(state = machine.state, destination = machine.destination)
+        val plan = if (machine.state == TripState.IDLE) emptyList() else machine.milestones
+        if (plan != _ui.value.milestones && plan.isNotEmpty()) addLog("이정표: ${plan.joinToString(" · ") { it.label }}" + if (machine.routeMeters in 0..3000) " (경로 ${machine.routeMeters} m, 3 km 미만 → 출발 브리핑)" else "")
+        _ui.value = _ui.value.copy(state = machine.state, destination = machine.destination, milestones = plan)
     }
 
     /**
@@ -310,7 +314,25 @@ class TripEngine private constructor(
         }.onFailure { addLog("앱 전면 전환 실패: ${it.message}") }
     }
 
-    private fun say(text: String) { speaker.speak(text); _ui.value = _ui.value.copy(lastSpoken = text); addLog("🔊 $text") }
+    private fun say(text: String) { speaker.speak(text); _ui.value = _ui.value.copy(lastSpoken = text); addLog("🔊 $text"); notifyGuidance(text) }
+
+    /**
+     * 음성 안내를 시스템 헤드업 알림으로도 띄운다 (실험 11/9): 내비가 전체 창일 때 라스트마일이 뒤에 있어도 한 줄 안내가 내비 위에 잠깐 보이게.
+     * CarSystemUI 는 중요도 HIGH 알림을 HeadsUpNotification 창에 띄운다. 카테고리는 NAVIGATION(주행 중 허용 카테고리). 소리·진동 없음, 8초 뒤 자동 소멸.
+     */
+    private fun notifyGuidance(text: String) = runCatching {
+        val nm = context.getSystemService(android.app.NotificationManager::class.java) ?: return@runCatching
+        nm.createNotificationChannel(android.app.NotificationChannel(CH_GUIDANCE, "주행 안내", android.app.NotificationManager.IMPORTANCE_HIGH).apply {
+            description = "3 km·1 km·300 m·정차·도착 음성 안내를 글로도 보여 줍니다"; setSound(null, null); enableVibration(false)
+        })
+        val open = android.app.PendingIntent.getActivity(context, 0, android.content.Intent(context, kr.lastmile.app.ui.MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK), android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT)
+        val n = android.app.Notification.Builder(context, CH_GUIDANCE)
+            .setSmallIcon(kr.lastmile.app.R.drawable.ic_flag).setContentTitle("라스트마일").setContentText(text)
+            .setStyle(android.app.Notification.BigTextStyle().bigText(text))
+            .setCategory(android.app.Notification.CATEGORY_NAVIGATION).setOnlyAlertOnce(false).setAutoCancel(true).setTimeoutAfter(8_000)
+            .setContentIntent(open).build()
+        nm.notify(NOTI_GUIDANCE, n)
+    }.onFailure { addLog("알림 실패: ${it.message}") }.let { }
 
     /** 소스·어댑터가 상태를 보고하는 창구 (화면 상단 상태줄 + 로그). */
     fun status(key: String, text: String) = post { sourceStatus[key] = text; _ui.value = _ui.value.copy(sources = sourceStatus.toMap()); addLog("[$key] $text") }
