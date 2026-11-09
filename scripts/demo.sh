@@ -31,8 +31,11 @@ remain(){ $ADB logcat -d -v brief 2>/dev/null | grep -oE "remainDistance:[0-9]+"
 # 내비가 DIST m 이하가 될 때까지 기다린다 (최대 MAX 초)
 wait_until(){ local dist=$1 max=${2:-240} t=0 r; while [ $t -lt $max ]; do r=$(remain); [ -n "$r" ] && [ "$r" -le "$dist" ] && { echo "   내비 남은 거리 ${r} m"; return 0; }; sleep 3; t=$((t+3)); done; echo "   (시간 초과: 남은 거리 ${r:-?} m)"; return 0; }
 # 내비 전체 창에서 주행 시뮬레이션 시작 → 패널 닫기. 내비가 아직 경로 선택 화면(안내 시작 카운트다운)이면 길게 눌러도 패널이 안 뜨므로,
-# 남은 거리가 줄기 시작할 때까지 최대 3번 다시 시도한다.
-simulate(){ local i r0 r1; for i in 1 2 3; do r0=$(remain); $ADB shell input swipe 2460 1176 2460 1176 1300; sleep 2; $ADB shell input tap 2141 772; sleep 1; $ADB shell input tap 2435 592; sleep 7; r1=$(remain); [ -n "$r0" ] && [ -n "$r1" ] && [ "$r1" -lt "$r0" ] && return 0; echo "   (시뮬레이션이 안 돌아 다시 시도 $i: ${r0:-?} → ${r1:-?} m)"; sleep 3; done; }
+# 남은 거리가 줄기 시작할 때까지 최대 3번 다시 시도한다. 내비는 remainDistance 를 100 m 단위로만 찍고 시뮬레이션 속도가 약 16 m/s 라
+# 7초로는 판정이 안 될 때가 있다(실측 11/9: 2600 m 그대로 → 재시도가 패널을 다시 열어 '정지'를 눌러 버림). 그래서 2초마다 최대 16초 본다.
+simulate(){ local i j r0 r1; for i in 1 2 3; do r0=$(remain); $ADB shell input swipe 2460 1176 2460 1176 1300; sleep 2; $ADB shell input tap 2141 772; sleep 1; $ADB shell input tap 2435 592
+  for j in 1 2 3 4 5 6 7 8; do sleep 2; r1=$(remain); [ -n "$r0" ] && [ -n "$r1" ] && [ "$r1" -lt "$r0" ] && return 0; done
+  echo "   (시뮬레이션이 안 돌아 다시 시도 $i: ${r0:-?} → ${r1:-?} m)"; sleep 3; done; }
 # 라스트마일을 전체 창으로 앞에 (분할 상태였다면 창 바를 오른쪽 끝까지 끌어 전체로)
 front_full(){ $ADB shell am start -n $APP/.ui.MainActivity >/dev/null 2>&1; sleep 2; $ADB shell input swipe 1706 720 2545 720 500; sleep 2.5; }
 

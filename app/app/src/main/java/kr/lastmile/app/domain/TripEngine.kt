@@ -292,8 +292,12 @@ class TripEngine private constructor(
     }
 
     private fun dispatch(event: TripEvent) {
-        for (a in machine.handle(event)) when (a) {
-            is TripAction.Speak -> say(a.text, a.headline)
+        val actions = machine.handle(event)
+        // 도착(ARRIVED)이면 같은 배치에서 bringToFront() 로 앱이 앞에 나오므로, 그 순간의 "도착" 문장은 헤드업을 올리지 않는다
+        // (activityResumed 는 액티비티가 실제로 뜬 뒤에야 true 라, 그것만 보면 앱 화면 위에 같은 글이 5초 겹쳐 뜬다 — 11/9 영상 실측).
+        val arriving = actions.any { it is TripAction.StateChanged && it.to == TripState.ARRIVED }
+        for (a in actions) when (a) {
+            is TripAction.Speak -> say(a.text, a.headline, headsUp = !arriving)
             is TripAction.Notify -> sender.send(a.text) { addLog("메시지(${a.kind}): $it") }.also { _ui.value = _ui.value.copy(lastMessage = a.text, messagesSent = _ui.value.messagesSent + a.kind) }
             is TripAction.StateChanged -> { addLog("상태 ${a.from} → ${a.to}"); if (a.to == TripState.ARRIVED) { _ui.value = _ui.value.copy(arrivedAtMs = System.currentTimeMillis()); bringToFront() } }
         }
@@ -316,7 +320,7 @@ class TripEngine private constructor(
         }.onFailure { addLog("앱 전면 전환 실패: ${it.message}") }
     }
 
-    private fun say(text: String, headline: String = "") { speaker.speak(text); _ui.value = _ui.value.copy(lastSpoken = text); addLog("🔊 $text"); notifyGuidance(text, headline) }
+    private fun say(text: String, headline: String = "", headsUp: Boolean = true) { speaker.speak(text); _ui.value = _ui.value.copy(lastSpoken = text); addLog("🔊 $text"); if (headsUp) notifyGuidance(text, headline) }
 
     /**
      * 음성 안내를 시스템 헤드업 알림으로도 띄운다 (대표 결정 11/9: 주행 중 구조 = 내비 전체 창 + 헤드업).

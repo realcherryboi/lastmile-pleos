@@ -11,13 +11,8 @@
 | 1:05–1:20 | 마중 모드 ON (사전 설정) | 스위치 | 메시지 미리보기 "5분 후 도착…" |
 | 1:20–1:30 | 도착 | `geo fix` 0m(지오펜스 진입) + Virtual Console Gear **P** | ✉ "도착했어요" + 🔊 "도착 알림 보냈어요. 여기는 10분 300원이에요." |
 
-## 녹화 (완료본: docs/submission/video/lastmile_demo_1080p.mp4, 73초)
-```bash
-adb exec-out screenrecord --output-format=h264 - > ~/Desktop/lastmile_demo.h264
-```
-```bash
-ffmpeg -framerate 60 -i ~/Desktop/lastmile_demo.h264 -c copy ~/Desktop/lastmile_demo.mp4
-```
+## 녹화 (완료본: docs/video/lastmile_demo_1080p.mp4, 180초 — 11/9)
+위 표는 11/5 구버전(GPS 점프) 기준이다. 현재 흐름은 `scripts/demo.sh`(내비 주행 시뮬레이션, 내비 전체 창 + 헤드업)이고, 녹화·자막·배속 순서는 docs/emulator-setup.md §10 에 있다.
 
 ## 남은 확인
 - [ ] STT 실제 마이크 인식 (Extended Controls > Microphone)
