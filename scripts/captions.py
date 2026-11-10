@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """시연 영상에 앱 음성 자막을 입힌다 (주행 중엔 내비가 앞에 있어 앱 음성이 화면에 안 보이므로).
 
-사용: python scripts/captions.py <raw.mp4> <logcat_epoch.txt> <rec_start_epoch> <out.mp4> [--trim 초] [--note "자막 한 줄"] [--voice Yuna]
+사용: python scripts/captions.py <raw.mp4> <logcat_epoch.txt> <rec_start_epoch> <out.mp4> [--trim 초] [--note "자막 한 줄"] [--voice Yuna | --voice edge:ko-KR-SunHiNeural [--rate +10%]]
   logcat_epoch.txt: `adb logcat -v epoch -s LastMile:D` 출력 (디버그 빌드, "🔊 문장" 줄의 epoch 초를 쓴다)
   rec_start_epoch : screenrecord 를 띄운 순간의 epoch 초 (date +%s.%N)
   --voice NAME    : adb screenrecord 는 화면만 담고 에뮬레이터 소리는 녹음하지 않는다. 같은 문장을 macOS `say -v NAME`(한국어 Yuna)로
@@ -33,12 +33,20 @@ def parse(logcat, rec_start, durs=None):
         out.append((t, t + max(dur, 1.5), text))
     return out
 
-def synth(texts, voice, tmp):
-    """문장마다 `say` 로 AIFF 를 만들고 (경로, 길이초) 목록을 돌려준다."""
+def synth(texts, voice, tmp, rate=None):
+    """문장마다 음성 파일을 만들고 (경로, 길이초) 목록을 돌려준다.
+    voice = macOS `say` 음성 이름(Yuna …) 또는 `edge:ko-KR-SunHiNeural` 처럼 Microsoft Edge 신경망 음성(pip edge-tts, 키 불필요;
+    실행 파일은 EDGE_TTS 환경변수 또는 PATH 의 edge-tts). rate 는 edge 전용 말속도("+10%")."""
     out = []
     for i, text in enumerate(texts):
-        p = os.path.join(tmp, f"v{i}.aiff")
-        subprocess.run(["say", "-v", voice, "-o", p, text], check=True)
+        if voice.startswith("edge:"):
+            p = os.path.join(tmp, f"v{i}.mp3")
+            cmd = [os.environ.get("EDGE_TTS", "edge-tts"), "-v", voice[5:], "-t", text, "--write-media", p]
+            if rate: cmd += [f"--rate={rate}"]
+            subprocess.run(cmd, check=True)
+        else:
+            p = os.path.join(tmp, f"v{i}.aiff")
+            subprocess.run(["say", "-v", voice, "-o", p, text], check=True)
         d = float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", p]).decode().strip())
         out.append((p, d))
     return out
@@ -79,9 +87,10 @@ def main():
     if "--trim" in sys.argv: trim = float(sys.argv[sys.argv.index("--trim") + 1])
     if "--note" in sys.argv: note = sys.argv[sys.argv.index("--note") + 1]
     if "--voice" in sys.argv: voice = sys.argv[sys.argv.index("--voice") + 1]
+    rate = sys.argv[sys.argv.index("--rate") + 1] if "--rate" in sys.argv else None
     tmp = tempfile.mkdtemp(); clips = None
     if voice:
-        clips = synth([t for _, t in raw_cues(logcat, rec_start)], voice, tmp)
+        clips = synth([t for _, t in raw_cues(logcat, rec_start)], voice, tmp, rate)
         cues = parse(logcat, rec_start, [d for _, d in clips])
         json.dump(cues, open(out + ".cues.json", "w", encoding="utf-8"), ensure_ascii=False, indent=0)
     else:
