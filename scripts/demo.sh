@@ -57,6 +57,7 @@ shot 01_card
 $ADB shell input tap 1978 797; sleep 2.5; $ADB shell input tap 2178 797; sleep 2   # 칩: 정차·픽업 → 도착 후 주차 (카드 문구가 바뀜)
 $ADB shell input tap 2179 1212; sleep 9                                   # 안내 시작 → 내비가 앞으로(전체 창, 경로 표시) + 3 km 브리핑
 shot 02_nav_start
+sleep 5   # 출발 헤드업(5초)이 다 보일 때까지 — 시뮬레이션 패널을 여는 길게 누르기가 헤드업을 닫아 버린다(11/12 6회차 실측)
 
 step "내비 주행 시뮬레이션 시작 (내비 전체 창 그대로 · 라스트마일은 뒤에서 음성 + 헤드업)"
 simulate
@@ -85,7 +86,7 @@ $ADB emu geo fix 127.0947 37.4127 >/dev/null; sleep 1         # 출발 위치로
 $ADB shell input tap 1364 450; sleep 4                        # 목록 첫 행 → 상세 카드(지난번 행 + 지도 핀)
 shot 09_card_revisit
 $ADB logcat -c
-$ADB shell input tap 2179 1212; sleep 10                      # 안내 시작 → 내비가 앞 (출발 브리핑 헤드업)
+$ADB shell input tap 2179 1212; sleep 15                      # 안내 시작 → 내비가 앞 (출발 브리핑 헤드업이 다 보일 때까지 기다린 뒤 시뮬레이션)
 simulate
 wait_until 1000 150; sleep 1.5; shot 10_1km_revisit
 wait_until 300 120; sleep 1.5; shot 11_300m_revisit           # "… 지난번엔 정문 지나서 20미터에서 내리셨어요."

@@ -97,7 +97,7 @@ class TripStateMachine {
                     state == TripState.ARMED && event.meters <= 3000 -> {
                         purposeChangedSince3km = false
                         transition(TripState.BRIEF_3KM, out)
-                        out += TripAction.Speak(Briefing.at3km(d, lastRemainMin, evSoc, purpose), if (routeMeters in 0..3000) "출발 · ${d.name} 도착 ${lastRemainMin}분 전" else "3 km · ${d.name} 도착 ${lastRemainMin}분 전")
+                        out += TripAction.Speak(Briefing.at3km(d, lastRemainMin, evSoc, purpose), if (routeMeters in 0..3000) "출발 · ${d.name}까지 ${lastRemainMin}분" else "3 km · ${d.name}까지 ${lastRemainMin}분")
                         if (meetingMode) out += TripAction.Notify("eta", Briefing.meetingEta(d, lastRemainMin))
                     }
                     // 1 km. 출발점이 1.3 km 안이면 건너뛴다(첫 브리핑에서 막 규칙을 말했는데 곧바로 또 말하게 되므로).
@@ -106,7 +106,7 @@ class TripStateMachine {
                     }
                     // 300 m. 1 km 를 건너뛰었으면 첫 브리핑 상태에서 바로 온다. 출발점이 600 m 안이면 이것도 건너뛴다.
                     (state == TripState.BRIEF_1KM || state == TripState.BRIEF_3KM && skip1km) && !skip300m && event.meters <= 300 -> {
-                        transition(TripState.BRIEF_300M, out); out += TripAction.Speak(Briefing.at300m(d, purpose), "300 m · 곧 도착")
+                        transition(TripState.BRIEF_300M, out); out += TripAction.Speak(Briefing.at300m(d, purpose), "300 m · 잠시 후 도착")
                     }
                 }
             }
@@ -132,7 +132,7 @@ class TripStateMachine {
     private fun inLastStretch() = state == TripState.BRIEF_300M || skip300m && state in listOf(TripState.BRIEF_3KM, TripState.BRIEF_1KM)
 
     private fun stopping(d: Destination, out: MutableList<TripAction>) {
-        if (state in listOf(TripState.BRIEF_300M, TripState.BRIEF_1KM) || skip1km && state == TripState.BRIEF_3KM) { transition(TripState.STOPPING, out); out += TripAction.Speak(Briefing.stopping(d, purpose), "잠시 정차") }
+        if (state in listOf(TripState.BRIEF_300M, TripState.BRIEF_1KM) || skip1km && state == TripState.BRIEF_3KM) { transition(TripState.STOPPING, out); out += TripAction.Speak(Briefing.stopping(d, purpose), if (purpose == TripPurpose.PARK) "주차장 안내" else "잠시 정차") }
     }
 
     private fun checkArrival(d: Destination?, out: MutableList<TripAction>) {

@@ -19,6 +19,8 @@
     <string name="arrived_title">도착했어요</string>
     <string name="boarded_title">승하차 확인했어요</string>
     <string name="boarded_sub">문이 닫혔어요 · 안전 운전하세요</string>
+    <string name="boarded_sub_park">문이 닫혔어요 · 주차 완료</string>
+    <string name="boarded_sub_via">문이 닫혔어요 · 다음 목적지로 이어가요</string>
     <string name="battery_label">배터리</string>
     <string name="purpose_title">이번 목적지에서</string>
     <string name="purpose_stop">정차 · 픽업</string>

@@ -544,7 +544,7 @@ class MainActivity : AppCompatActivity() {
         val d = s.destination; val ar = b.pageArrived.root
         val boarded = s.state == TripState.DONE
         ar.findViewById<TextView>(R.id.arrivedTitle).text = getString(if (boarded) R.string.boarded_title else R.string.arrived_title)
-        ar.findViewById<TextView>(R.id.arrivedDestination).text = if (boarded) getString(R.string.boarded_sub) else d?.let { listOf(it.name, it.address).filter { f -> f.isNotBlank() }.joinToString(" · ") } ?: ""
+        ar.findViewById<TextView>(R.id.arrivedDestination).text = if (boarded) getString(when (s.purpose) { TripPurpose.PARK -> R.string.boarded_sub_park; TripPurpose.VIA -> R.string.boarded_sub_via; else -> R.string.boarded_sub }) else d?.let { listOf(it.name, it.address).filter { f -> f.isNotBlank() }.joinToString(" · ") } ?: ""
         // 승하차 카드: 기다리는 중 → 끝(내린 자리 기억 안내)
         ar.findViewById<TextView>(R.id.boardTitle).text = getString(if (boarded) R.string.boarding_done_title else R.string.boarding_wait_title)
         ar.findViewById<TextView>(R.id.boardHint).text = if (boarded) {

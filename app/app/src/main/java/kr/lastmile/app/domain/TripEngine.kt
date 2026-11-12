@@ -169,6 +169,7 @@ class TripEngine private constructor(
     private val prefs by lazy { context.getSharedPreferences("lastmile", Context.MODE_PRIVATE) }
     private val CH_GUIDANCE = "guidance"; private val NOTI_GUIDANCE = 1001
     private val NOTI_SHOW_MS = 5_000L        // 헤드업 표시 시간 (내비 TBT 패널을 가리므로 짧게)
+    private val HEADSUP_WAIT_MS = 4_000L     // 앱이 아직 앞에 있으면 내려갈 때까지 기다리는 최대 시간
     private val NOTI_BODY_CHARS = 70         // 헤드업 본문 2줄 분량
 
     /**
@@ -328,9 +329,14 @@ class TripEngine private constructor(
      * CarSystemUI 는 중요도 HIGH 알림을 HeadsUpNotification 창에 띄운다. 카테고리 NAVIGATION(주행 중 허용), 소리·진동 없음.
      * 카드는 제목 + 본문 2줄이라 제목은 headline("1 km · 주차장 안내"), 본문은 문장 단위로 70자 안에 잘라 넣는다.
      * 앱 화면이 떠 있을 때(도착 화면 등)는 같은 글을 두 번 보일 필요가 없어 올리지 않는다.
+     * 단, 출발 브리핑은 "안내 시작"을 누른 직후라 내비가 앞으로 오기 전(앱이 아직 떠 있는 순간)에 나올 수 있다.
+     * 그래서 앱이 떠 있으면 0.5초 간격으로 최대 4초 기다렸다가 앱이 내려가면 올리고, 끝까지 떠 있으면 버린다(11/12 촬영 5회차 실측).
      */
-    private fun notifyGuidance(text: String, headline: String) = runCatching {
-        if (kr.lastmile.app.LastMileApp.activityResumed) return@runCatching
+    private fun notifyGuidance(text: String, headline: String, waitedMs: Long = 0L): Unit = runCatching {
+        if (kr.lastmile.app.LastMileApp.activityResumed) {
+            if (waitedMs < HEADSUP_WAIT_MS) android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ notifyGuidance(text, headline, waitedMs + 500L) }, 500L)
+            return@runCatching
+        }
         val nm = context.getSystemService(android.app.NotificationManager::class.java) ?: return@runCatching
         nm.createNotificationChannel(android.app.NotificationChannel(CH_GUIDANCE, "주행 안내", android.app.NotificationManager.IMPORTANCE_HIGH).apply {
             description = "출발·1 km·300 m·정차·도착 음성 안내를 내비 위에 글로도 보여 줍니다"; setSound(null, null); enableVibration(false)
