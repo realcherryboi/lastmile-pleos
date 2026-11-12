@@ -27,8 +27,15 @@ def raw_cues(logcat, rec_start):
 def parse(logcat, rec_start, durs=None):
     """(시작, 끝, 문장) 목록. durs 가 있으면(음성 합성 길이) 그만큼, 없으면 글자 수 기준(0.28초/자, 최소 4초 최대 9초). 다음 큐 전까지로 자른다."""
     cues = raw_cues(logcat, rec_start); out = []
+    if durs:
+        # 음성이 있으면 차량 TTS 처럼 줄을 세운다: 앞 문장이 끝나기 전에 다음 문장이 나오면 앞 문장 뒤로 민다(겹쳐 읽지 않음).
+        prev_end = -1.0
+        for i, (t, text) in enumerate(cues):
+            a = max(t, prev_end + 0.3); b = a + durs[i] + 0.4
+            out.append((a, b, text)); prev_end = a + durs[i]
+        return out
     for i, (t, text) in enumerate(cues):
-        dur = durs[i] + 0.4 if durs else min(9.0, max(4.0, 0.28 * len(text)))
+        dur = min(9.0, max(4.0, 0.28 * len(text)))
         if i + 1 < len(cues): dur = min(dur, cues[i + 1][0] - t - 0.2)
         out.append((t, t + max(dur, 1.5), text))
     return out

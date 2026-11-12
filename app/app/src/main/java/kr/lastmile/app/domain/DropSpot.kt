@@ -12,7 +12,7 @@ import kotlin.math.sin
 /**
  * 승하차 위치 기억 — "내린 자리".
  * 승객석 문이 열린 좌표는 그 목적지의 실제 승하차 지점이다(Vehicle SDK Door + FusedLocation). 목적지별로 기기 안에만 저장하고,
- * 다음에 같은 곳에 가면 "지난번엔 정문 지나서 20미터에서 내렸어요"로 제안한다. 서버·키 없음, 폰 앱은 문 신호가 없어 만들 수 없는 데이터.
+ * 다음에 같은 곳에 가면 "지난번엔 정문 지나서 20미터에서 내리셨어요"로 제안한다. 서버·키 없음, 폰 앱은 문 신호가 없어 만들 수 없는 데이터.
  */
 data class DropSpot(val lat: Double, val lng: Double, val atMs: Long, val purpose: String = "STOP")
 

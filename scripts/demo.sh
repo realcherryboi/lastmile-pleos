@@ -78,7 +78,7 @@ step "조수석 문 열림 → 닫힘 → 승하차 확인(DONE) + 내린 자리
 curl -s -X PUT "$VC/vehicle/body?door_fr=true" >/dev/null; sleep 3; curl -s -X PUT "$VC/vehicle/body?door_fr=false" >/dev/null; sleep 6
 shot 08_done
 
-step "두 번째 방문: 완료 → 같은 목적지 다시 선택 → 카드에 '지난번 내린 자리' → 안내 시작 → 시뮬레이션 → 300 m에서 '지난번엔 …에서 내렸어요'"
+step "두 번째 방문: 완료 → 같은 목적지 다시 선택 → 카드에 '지난번 내린 자리' → 안내 시작 → 시뮬레이션 → 300 m에서 '지난번엔 …에서 내리셨어요'"
 curl -s -X PUT "$VC/vehicle/gear?gear=Drive" >/dev/null
 $ADB shell input tap 1693 1212; sleep 2.5                     # 완료 (앱이 이미 전체 창으로 앞에 있음)
 $ADB emu geo fix 127.0947 37.4127 >/dev/null; sleep 1         # 출발 위치로 돌려놓는다
@@ -88,5 +88,5 @@ $ADB logcat -c
 $ADB shell input tap 2179 1212; sleep 10                      # 안내 시작 → 내비가 앞 (출발 브리핑 헤드업)
 simulate
 wait_until 1000 150; sleep 1.5; shot 10_1km_revisit
-wait_until 300 120; sleep 1.5; shot 11_300m_revisit           # "… 지난번엔 정문 지나서 20미터에서 내렸어요."
+wait_until 300 120; sleep 1.5; shot 11_300m_revisit           # "… 지난번엔 정문 지나서 20미터에서 내리셨어요."
 echo; echo "스크린샷: $SHOT"

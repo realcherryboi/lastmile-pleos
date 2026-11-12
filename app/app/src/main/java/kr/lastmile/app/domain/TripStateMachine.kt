@@ -93,7 +93,7 @@ class TripStateMachine {
                 lastRemainMin = maxOf(1, event.remainSec / 60)
                 if (routeMeters < 0 && event.meters > 0) routeMeters = event.meters   // 첫 남은 거리 = 경로 길이 → 이정표 계획 확정
                 when {
-                    // 3 km 지점 브리핑. 경로가 3 km 미만이면 출발 직후 바로 나간다(출발 브리핑) — 문장은 "도착 N분 전이에요"라 그대로 맞는다.
+                    // 3 km 지점 브리핑. 경로가 3 km 미만이면 출발 직후 바로 나간다(출발 브리핑) — 문장은 "○○까지 N분 남았어요" 전이에요"라 그대로 맞는다.
                     state == TripState.ARMED && event.meters <= 3000 -> {
                         purposeChangedSince3km = false
                         transition(TripState.BRIEF_3KM, out)

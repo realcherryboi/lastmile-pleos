@@ -11,52 +11,61 @@ object Briefing {
         return if (jong == 0 || jong == 8) "로" else "으로"
     }
 
+    /** 조사 이/가 */
+    fun iga(word: String): String {
+        val ch = word.lastOrNull { it in '가'..'힣' } ?: return "이"
+        return if ((ch - '가') % 28 == 0) "가" else "이"
+    }
+
     /** 조사 (이)에요: 받침 있으면 "이에요", 없으면 "예요" */
     fun ieyo(word: String): String {
         val ch = word.lastOrNull { it in '가'..'힣' } ?: return "이에요"
         return if ((ch - '가') % 28 == 0) "예요" else "이에요"
     }
 
-    /** "정문 앞은 황색 점선, 5분까지 정차 가능하고" / "정문 앞은 황색 실선이라 정차 금지고" */
-    private fun curbClause(d: Destination): String {
-        val line = d.curb
-        return when {
-            d.curbsideAllowed && line.known -> "정문 앞은 ${line.label}, ${d.curbsideLimitMin}분까지 정차 가능하고"
-            d.curbsideAllowed -> "정문 앞은 ${d.curbsideLimitMin}분까지 정차 가능하고"
-            line.known -> "정문 앞은 ${line.label}이라 정차 금지고"
-            else -> "정문 앞은 정차 금지고"
-        }
-    }
+    /** " 요금은 10분 300원이에요." (요금 정보가 없으면 빈 문자열) */
+    private fun feeLine(d: Destination): String = if (d.parkingFee.isNotBlank()) " 요금은 ${d.parkingFee}${ieyo(d.parkingFee)}." else ""
 
+    /**
+     * 출발·3 km 브리핑. 실제 내비 안내처럼 "남은 거리·시간 → 할 일" 순서로 짧게 말하되, 할 일 앞에 이유(목적·정문 앞 차선)를 붙인다.
+     * 배터리는 주행 판단과 무관한 참고 정보라 맨 끝에 "참고로"로 붙인다 (대표 피드백 11/12).
+     *   주차: "한식당 소담까지 12분 남았어요. 주차 목적이라 정문 대신 뒤편 공영주차장으로 안내할게요. 요금은 10분 300원이에요. 참고로 …"
+     *   정차·금지: "… 정문 앞은 황색 실선이라 세울 수 없어요. 대신 뒤편 공영주차장으로 안내할게요. 요금은 …"
+     *   정차·가능: "… 정문 앞은 황색 점선이라 5분까지 세울 수 있어요. 오래 기다리시면 지하주차장이 있어요. 요금은 30분 무료예요."
+     */
     fun at3km(d: Destination, remainMin: Int, evSoc: Int = -1, purpose: TripPurpose = TripPurpose.STOP): String {
-        val head = "${if (purpose == TripPurpose.VIA) "경유지 " else ""}${d.name} 도착 ${remainMin}분 전이에요."
-        if (purpose == TripPurpose.PARK) {
-            val parking = when {
-                d.parkingName.isBlank() -> " 주차장 정보가 없어서 정문 앞으로 안내할게요."
-                d.parkingFee.isNotBlank() -> " ${d.parkingName}, ${d.parkingFee}${ro(d.parkingFee)} 바로 안내할게요."
-                d.parkingDistanceM >= 0 -> " ${d.parkingName}, 정문에서 ${d.parkingDistanceM}미터로 바로 안내할게요."
-                else -> " ${d.parkingName}${ro(d.parkingName)} 바로 안내할게요."
-            }
-            val valet = if (d.valet) " 발렛도 있어요." else ""
-            return head + parking + valet + charger(d, evSoc)
+        val head = "${if (purpose == TripPurpose.VIA) "경유지 " else ""}${d.name}까지 ${remainMin}분 남았어요."
+        val valet = if (d.valet) " 발렛도 있어요." else ""
+        val line = d.curb
+        val body = when {
+            purpose == TripPurpose.PARK -> if (d.parkingName.isBlank()) " 주차장 정보가 없어서 정문 앞까지 안내할게요."
+                else " 주차 목적이라 정문 대신 ${d.parkingName}${ro(d.parkingName)} 안내할게요.${feeLine(d)}$valet"
+            !d.rulesKnown -> " 처음 가는 곳이라 정차 규칙 정보가 없어요. 일반 도로 기준으로 5분 안에만 세우세요." +
+                (if (d.parkingName.isNotBlank() && d.parkingDistanceM >= 0) " 가까운 주차장은 ${d.parkingName}, ${d.parkingDistanceM}미터예요." else "")
+            d.curbsideAllowed -> " 정문 앞은 ${if (line.known) "${line.label}이라 " else ""}${d.curbsideLimitMin}분까지 세울 수 있어요." +
+                (if (d.parkingName.isNotBlank()) " 오래 기다리시면 ${d.parkingName}${iga(d.parkingName)} 있어요.${feeLine(d)}" else "") + valet
+            d.parkingName.isNotBlank() -> " 정문 앞은 ${if (line.known) "${line.label}이라 " else "정차 금지라 "}세울 수 없어요. 대신 ${d.parkingName}${ro(d.parkingName)} 안내할게요.${feeLine(d)}$valet"
+            else -> " 정문 앞은 ${if (line.known) "${line.label}이라 " else "정차 금지라 "}세울 수 없어요. 주변 주차장을 찾아 주세요.$valet"
         }
-        if (!d.rulesKnown) {
-            val parking = if (d.parkingName.isNotBlank()) " 가장 가까운 주차장은 ${d.parkingName}, ${d.parkingDistanceM}미터예요." else ""
-            return "$head 정차 규칙 정보가 없는 곳이라 일반 도로 기준 5분 이내 정차로 안내할게요.$parking" + charger(d, evSoc)
-        }
-        val valet = if (d.valet) "발렛이 있어요." else "발렛은 없어요."
-        val parking = if (d.parkingName.isNotBlank()) " ${d.parkingName}은 ${d.parkingFee}${ieyo(d.parkingFee)}." else ""
-        return "$head ${curbClause(d)} $valet$parking" + charger(d, evSoc)
+        return head + body + charger(d, evSoc, purpose)
     }
 
-    /** EV 배터리가 낮으면 "머무는 동안 충전" 추천을 한 문장 덧붙인다 (Vehicle SDK EvBattery + ChargerPlanner). */
-    private fun charger(d: Destination, evSoc: Int): String {
+    /**
+     * EV 배터리가 낮으면 맨 끝에 참고로 덧붙인다 (Vehicle SDK EvBattery + ChargerPlanner).
+     * 가는 주차장에 충전기가 있으면 "세워 두는 동안 충전" — 따로 들를 필요가 없다는 게 핵심이라 그걸 먼저 말한다.
+     */
+    private fun charger(d: Destination, evSoc: Int, purpose: TripPurpose): String {
         if (evSoc < 0 || evSoc > LOW_SOC) return ""
+        val lead = " 참고로 배터리가 ${evSoc}퍼센트예요."
         val c = d.charger
-        return when {
-            c != null -> " 배터리가 ${evSoc}퍼센트예요. ${chargerLine(c)}"
-            d.parkingCharger -> " 배터리가 ${evSoc}퍼센트예요. ${d.parkingName.ifBlank { "주차장" }}에 충전기가 있어요."
-            else -> " 배터리가 ${evSoc}퍼센트인데 이곳 주차장엔 충전기 정보가 없어요."
+        val atParking = d.parkingName.isNotBlank() && (if (c != null) c.name == d.parkingName else d.parkingCharger)
+        val goingThere = purpose == TripPurpose.PARK || (!d.curbsideAllowed && d.rulesKnown)
+        val what = if (c != null && c.live) "빈 충전기가 ${c.available}대 있어서" else "충전기가 있어서"
+        return lead + when {
+            atParking && goingThere -> " 가시는 주차장에 $what, 세워 두는 동안 충전할 수 있어요."
+            atParking -> " ${d.parkingName}에 충전기가 있어요. 오래 머무시면 거기 세우고 충전하세요."
+            c != null -> " ${chargerLine(c)}"
+            else -> " 이 근처엔 충전기 정보가 없어요."
         }
     }
 
@@ -91,7 +100,7 @@ object Briefing {
         val line = d.curb
         if (!d.rulesKnown) return "1킬로 남았어요. 정문 앞 차선을 보세요. 황색 점선이면 5분, 실선이면 세울 수 없어요."
         if (purposeChanged) return "1킬로 남았어요. " + when {
-            purpose == TripPurpose.PARK -> "주차로 바꿨으니 ${parkingEntrance(d)}"
+            purpose == TripPurpose.PARK -> "주차로 바꾸셨으니 ${parkingEntrance(d)}"
             d.curbsideAllowed && line.known -> "정문 앞 ${line.label}, ${d.curbsideLimitMin}분까지 세울 수 있어요."
             d.curbsideAllowed -> "정문 앞에 ${d.curbsideLimitMin}분까지 세울 수 있어요."
             line.known -> "정문 앞은 ${line.label}이라 못 세워요. ${parkingEntrance(d)}"
@@ -106,43 +115,48 @@ object Briefing {
 
     fun at300m(d: Destination, purpose: TripPurpose = TripPurpose.STOP): String {
         // 지난번 내린 자리(승객석 문이 열렸던 좌표)가 있으면 그걸 말한다 — 이 목적지에서 실제로 세웠던 곳. 주차 목적이면 주차장 입구 안내 뒤에 붙인다.
-        val drop = d.drop?.let { " 지난번엔 ${DropMemory.describe(d, it, "미터")}에서 내렸어요." } ?: ""
-        if (drop.isNotEmpty() && purpose != TripPurpose.PARK) return "곧 도착이에요.$drop"
+        val drop = d.drop?.let { " 지난번엔 ${DropMemory.describe(d, it, "미터")}에서 내리셨어요." } ?: ""
+        if (drop.isNotEmpty() && purpose != TripPurpose.PARK) return "잠시 후 도착해요.$drop"
         return d.parkingHint.ifBlank {
             when {
-                purpose == TripPurpose.PARK && d.parkingName.isNotBlank() -> "곧 ${d.parkingName} 입구예요."
-                !d.rulesKnown && d.parkingName.isNotBlank() -> "곧 도착이에요. ${d.parkingName}이 ${d.parkingDistanceM}미터 거리예요."
-                else -> "곧 도착이에요."
+                purpose == TripPurpose.PARK && d.parkingName.isNotBlank() -> "잠시 후 ${d.parkingName} 입구예요."
+                !d.rulesKnown && d.parkingName.isNotBlank() -> "잠시 후 도착해요. ${d.parkingName}${iga(d.parkingName)} ${d.parkingDistanceM}미터 거리예요."
+                else -> "잠시 후 도착해요."
             }
         } + drop
     }
 
-    /** "지난번엔 정문 지나서 20미터에서 내렸어요 · 3회" */
-    fun dropLine(d: Destination): String? = d.drop?.let { "지난번엔 ${DropMemory.describe(d, it, "미터")}에서 내렸어요." }
+    /** "지난번엔 정문 지나서 20미터에서 내리셨어요." */
+    fun dropLine(d: Destination): String? = d.drop?.let { "지난번엔 ${DropMemory.describe(d, it, "미터")}에서 내리셨어요." }
 
+    /** 우측 깜빡이·브레이크로 "여기 세우려나" 싶을 때. 이유 → 할 일 순서. */
     fun stopping(d: Destination, purpose: TripPurpose = TripPurpose.STOP): String = when {
-        purpose == TripPurpose.PARK -> if (d.parkingName.isNotBlank()) "주차 목적이에요. 정문 말고 ${d.parkingName} 입구로 안내할게요." else "주차 목적이에요. 여기는 잠깐만 세우세요."
-        !d.rulesKnown -> "여기는 일반 도로 기준 5분까지예요. 더 기다리면 주차장으로 안내할게요."
-        d.curbsideAllowed -> "여기는 ${d.curbsideLimitMin}분까지예요. 더 기다리면 주차장으로 안내할게요."
-        d.curb.known -> "여기는 ${d.curb.label}, 정차 금지 구역이에요. 주차장 입구로 안내할게요."
-        else -> "여기는 정차 금지 구역이에요. 주차장 입구로 안내할게요."
+        purpose == TripPurpose.PARK -> if (d.parkingName.isNotBlank()) "주차 목적이라 여기 말고 ${d.parkingName} 입구까지 가 주세요." else "주차장 정보가 없어요. 여기는 잠깐만 세우세요."
+        !d.rulesKnown -> "정차 규칙 정보가 없는 곳이에요. 일반 도로 기준으로 5분 안에만 세우세요."
+        d.curbsideAllowed -> "여기는 ${if (d.curb.known) "${d.curb.label}이라 " else ""}${d.curbsideLimitMin}분까지 세울 수 있어요. 더 기다리시면 주차장으로 안내할게요."
+        else -> "여기는 ${if (d.curb.known) "${d.curb.label}이라 " else "정차 금지 구역이라 "}세울 수 없어요. ${d.parkingName.ifBlank { "주차장" }} 입구로 안내할게요."
     }
 
     fun arrived(d: Destination, meetingOn: Boolean, purpose: TripPurpose = TripPurpose.STOP): String {
-        val notice = if (meetingOn) "도착 알림 보냈어요. " else ""
-        return notice + when (purpose) {
-            TripPurpose.PARK -> if (d.parkingFee.isNotBlank()) "주차장 도착했어요. ${d.parkingFee}${ieyo(d.parkingFee)}." else "도착했어요. 주차 자리를 보세요."
+        val notice = if (meetingOn) " 기다리는 분께 도착을 알렸어요." else ""
+        return when (purpose) {
+            TripPurpose.PARK -> if (d.parkingName.isNotBlank()) "${d.parkingName}에 도착했어요.${feeLine(d)}" else "도착했어요. 주차 자리를 보세요."
             TripPurpose.VIA -> if (d.curbsideAllowed) "경유지예요. ${d.curbsideLimitMin}분 안에 출발하면 돼요." else "경유지예요. 정차 금지 구역이라 바로 내리고 출발하세요."
-            TripPurpose.STOP -> if (d.parkingFee.isNotBlank()) "여기는 ${d.parkingFee}${ieyo(d.parkingFee)}." else "도착했어요."
-        }
+            TripPurpose.STOP -> when {
+                d.curbsideAllowed -> "도착했어요. ${d.curbsideLimitMin}분까지 세울 수 있어요."
+                d.rulesKnown && d.parkingName.isNotBlank() -> "${d.parkingName}에 도착했어요.${feeLine(d)}"   // 정문 앞 정차 금지라 주차장으로 갔다
+                else -> "도착했어요."
+            }
+        } + notice
     }
 
     /** 승객석 문이 열렸다 닫힘 (Vehicle SDK Door) → 승하차 완료 */
     fun boarded(d: Destination, meetingOn: Boolean, purpose: TripPurpose = TripPurpose.STOP): String = when {
         purpose == TripPurpose.VIA -> "승하차 확인했어요. 다음 목적지로 이어갈게요."
-        meetingOn -> "탑승 확인했어요. 타이머는 끝났어요, 안전 운전하세요."
+        meetingOn -> "탑승 확인했어요. 안전 운전하세요."
+        purpose == TripPurpose.PARK -> "승하차 확인했어요."          // 주차한 뒤라 "안전 운전하세요"는 맞지 않는다
         else -> "승하차 확인했어요. 안전 운전하세요."
-    } + if (d.dropNew && d.dropCount == 1) " 이 자리는 기억해 둘게요." else ""
+    } + if (d.dropNew && d.dropCount == 1) " 내리신 자리는 기억해 뒀다가 다음에 알려 드릴게요." else ""
 
     fun overstay(d: Destination): String = "${d.curbsideLimitMin}분 지났어요. 주차장으로 갈까요?"
 
