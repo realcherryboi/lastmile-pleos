@@ -39,4 +39,14 @@ class TripStateMachineTest {
         assertEquals(TripState.STOPPING, m.state)
         assertEquals("여기는 황색 실선이라 세울 수 없어요. 뒤편 공영주차장 입구로 안내할게요.", s.single().text)
     }
+
+    @Test fun curbTimeUpSpeaksOnceOnlyWhenStoppedAtCurb() {
+        val hospital = sodam.copy(id = "h", curbsideAllowed = true, curbsideLimitMin = 5, parkingName = "지하주차장", curbLine = "yellow_dashed")
+        val m = TripStateMachine(); m.purpose = TripPurpose.STOP
+        m.handle(TripEvent.DestinationSet(hospital)); m.handle(TripEvent.RemainDistance(2600, 260))
+        m.handle(TripEvent.NaviArrived); m.handle(TripEvent.Gear(GearPosition.P))
+        assertEquals(TripState.ARRIVED, m.state)
+        assertEquals("5분 지났어요. 더 기다리시려면 지하주차장으로 옮겨 주세요.", speaks(m.handle(TripEvent.CurbTimeUp)).single().text)
+        assertTrue(speaks(m.handle(TripEvent.CurbTimeUp)).isEmpty())
+    }
 }

@@ -35,9 +35,10 @@ class BriefingTest {
 
     @Test fun stopPurposeNoStoppingCurb() {
         assertEquals(
-            "한식당 소담까지 12분 남았어요. 정문 앞은 황색 실선이라 세울 수 없어요. 대신 뒤편 공영주차장으로 안내할게요. 요금은 10분 300원이에요.",
+            "한식당 소담까지 12분 남았어요. 정문 앞은 황색 실선이라 정차 금지고 뒤편 공영주차장은 10분 300원이에요.",
             Briefing.at3km(sodam, 12, purpose = TripPurpose.STOP))
         assertEquals("뒤편 공영주차장에 도착했어요. 요금은 10분 300원이에요. 기다리는 분께 도착을 알렸어요.", Briefing.arrived(sodam, true, TripPurpose.STOP))
+        assertEquals("지금 도착했어요. 정문 앞으로 나와 주세요.", Briefing.meetingArrived(sodam, TripPurpose.STOP))   // 주차장에 섰다
         assertEquals("도착했어요. 5분까지 세울 수 있어요.", Briefing.arrived(hospital, false, TripPurpose.STOP))
     }
 
@@ -45,6 +46,25 @@ class BriefingTest {
         val s = Briefing.at3km(hospital, 8, evSoc = 15, purpose = TripPurpose.STOP)
         assertTrue(s, s.startsWith("성남시립병원까지 8분 남았어요. 정문 앞은 황색 점선이라 5분까지 세울 수 있어요."))
         assertTrue(s, s.endsWith("참고로 배터리가 15퍼센트예요. 정문에서 120미터 시청 공영주차장 충전소에 충전기가 있어요."))
+    }
+
+    @Test fun userWordingForStopAndOverstay() {
+        assertEquals("여기는 황색 점선, 5분까지예요. 더 기다리시려면 지하주차장으로 안내할게요.", Briefing.stopping(hospital, TripPurpose.STOP))
+        assertEquals("5분 지났어요. 더 기다리시려면 지하주차장으로 옮겨 주세요.", Briefing.overstay(hospital))
+        assertEquals("지금 도착했어요. 정문 앞이에요.", Briefing.meetingArrived(hospital, TripPurpose.STOP))   // 정문 앞에 섰다
+    }
+
+    @Test fun unknownRulesSayCaution() {
+        val generic = sodam.copy(id = "navi", rulesKnown = false, curbLine = "")
+        assertTrue(Briefing.at3km(generic, 7).contains("주정차 단속에 주의하세요."))
+        assertTrue(Briefing.stopping(generic).contains("주정차 단속에 주의하세요."))
+    }
+
+    @Test fun revisitStopKeepsParkingHint() {
+        val revisit = sodam.copy(drop = DropSpot(37.4, 127.1002, 0L), dropCount = 1)
+        val s = Briefing.at300m(revisit, TripPurpose.STOP)
+        assertTrue(s, s.startsWith("잠시 후 우회전하면 바로 주차장 입구예요. 지난번엔 "))
+        assertTrue(s, s.endsWith("내리셨어요."))
     }
 
     @Test fun printScript() {

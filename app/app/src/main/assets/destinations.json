@@ -96,14 +96,14 @@
    "lng": 126.4505,
    "arrivalRadiusM": 200,
    "curbsideAllowed": true,
-   "curbsideLimitMin": 3,
+   "curbsideLimitMin": 5,
    "valet": false,
    "parkingName": "단기주차장",
    "parkingFee": "30분 무료",
    "parkingHint": "1층 5번 출구 앞 커브사이드로 진입하세요.",
    "meetingPoint": "1층 5번 출구 앞",
    "qa": {
-    "얼마나": "커브사이드는 3분까지예요. 더 기다리면 단기주차장 30분 무료예요."
+    "얼마나": "커브사이드는 5분까지예요. 더 기다리면 단기주차장 30분 무료예요."
    },
    "address": "인천 중구 공항로 272",
    "zone": [
@@ -111,7 +111,7 @@
      "type": "entrance",
      "label": "5번 출구",
      "offsetM": 0,
-     "note": "3분 정차"
+     "note": "5분 정차"
     },
     {
      "type": "parking",

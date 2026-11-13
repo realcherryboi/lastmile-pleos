@@ -79,6 +79,7 @@ class TripEngine private constructor(
     private var insideRadius = false
     private var lastLocLogAt = 0L
     private val brakeHold = Runnable { addLog("브레이크 유지"); dispatch(TripEvent.BrakeHeld(true)) }
+    private val curbTimeUp = Runnable { addLog("정차 허용 시간 끝"); dispatch(TripEvent.CurbTimeUp) }
     private val BRAKE_HOLD_MS = 3_000L
     private val NAVI_STALE_MS = 15_000L
     val drops by lazy { DropSpotStore(context) }   // 승하차 위치 기억 (기기 내)
@@ -299,7 +300,16 @@ class TripEngine private constructor(
         for (a in actions) when (a) {
             is TripAction.Speak -> say(a.text, a.headline, headsUp = !arriving)
             is TripAction.Notify -> sender.send(a.text) { addLog("메시지(${a.kind}): $it") }.also { _ui.value = _ui.value.copy(lastMessage = a.text, messagesSent = _ui.value.messagesSent + a.kind) }
-            is TripAction.StateChanged -> { addLog("상태 ${a.from} → ${a.to}"); if (a.to == TripState.ARRIVED) { _ui.value = _ui.value.copy(arrivedAtMs = System.currentTimeMillis()); bringToFront() } }
+            is TripAction.StateChanged -> {
+                addLog("상태 ${a.from} → ${a.to}")
+                main.removeCallbacks(curbTimeUp)
+                if (a.to == TripState.ARRIVED) {
+                    _ui.value = _ui.value.copy(arrivedAtMs = System.currentTimeMillis()); bringToFront()
+                    // 정차 허용 시간이 있는 곳(주차 목적 제외)이면 그 시간이 다 됐을 때 한 번 안내한다
+                    val limit = machine.destination?.takeIf { it.curbsideAllowed && machine.purpose != TripPurpose.PARK }?.curbsideLimitMin ?: 0
+                    if (limit > 0) main.postDelayed(curbTimeUp, limit * 60_000L)
+                }
+            }
         }
         val plan = if (machine.state == TripState.IDLE) emptyList() else machine.milestones
         if (plan != _ui.value.milestones && plan.isNotEmpty()) addLog("이정표: ${plan.joinToString(" · ") { it.label }}" + if (machine.routeMeters in 0..3000) " (경로 ${machine.routeMeters} m, 3 km 미만 → 출발 브리핑)" else "")

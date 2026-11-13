@@ -23,6 +23,7 @@ sealed class TripEvent {
     data class ParkingBrake(val on: Boolean) : TripEvent()
     data class Door(val open: Boolean) : TripEvent()           // 승객석 문 (열림 → 닫힘 = 승하차 완료)
     data class EvSoc(val percent: Int) : TripEvent()           // EV 배터리 잔량 %
+    object CurbTimeUp : TripEvent()                            // 도착 후 정차 허용 시간이 다 됨 (엔진 타이머)
     object Reset : TripEvent()
 }
 
@@ -76,6 +77,7 @@ class TripStateMachine {
     private var nearDestination = false      // navi arrived or geofence enter
     private var parked = false               // gear P or parking brake
     private var doorOpened = false           // ARRIVED 이후 문이 열린 적 있음
+    private var overstaySaid = false         // 정차 시간 초과 안내는 한 번만
     private var lastRemainMin = 0
     private var lastRemainM = -1             // 마지막 내비 남은 거리(m), -1 = 모름
 
@@ -118,6 +120,9 @@ class TripStateMachine {
             is TripEvent.Gear -> { parked = event.position == GearPosition.P; checkArrival(d, out) }
             is TripEvent.ParkingBrake -> { if (event.on) parked = true; checkArrival(d, out) }
             is TripEvent.EvSoc -> evSoc = event.percent
+            is TripEvent.CurbTimeUp -> if (d != null && state == TripState.ARRIVED && purpose != TripPurpose.PARK && d.curbsideAllowed && !overstaySaid) {
+                overstaySaid = true; out += TripAction.Speak(Briefing.overstay(d), "정차 시간 초과")
+            }
             is TripEvent.Door -> if (d != null && state == TripState.ARRIVED) {
                 if (event.open) doorOpened = true
                 else if (doorOpened) { transition(TripState.DONE, out); out += TripAction.Speak(Briefing.boarded(d, meetingMode, purpose), "승하차 확인") }
@@ -137,7 +142,7 @@ class TripStateMachine {
         if (d == null || state == TripState.ARRIVED || state == TripState.DONE || state == TripState.IDLE) return
         if (nearDestination && parked) {
             transition(TripState.ARRIVED, out)
-            if (meetingMode) out += TripAction.Notify("arrived", Briefing.meetingArrived(d))
+            if (meetingMode) out += TripAction.Notify("arrived", Briefing.meetingArrived(d, purpose))
             out += TripAction.Speak(Briefing.arrived(d, meetingMode, purpose), "도착 · ${d.name}")
         }
     }
@@ -148,5 +153,5 @@ class TripStateMachine {
     }
 
     /** 기어 상태(parked)·배터리는 물리 상태라 목적지 변경에도 유지한다. 출발 시 P→D 이벤트가 오면 자연히 해제된다. */
-    private fun reset() { destination = null; nearDestination = false; doorOpened = false; lastRemainMin = 0; routeMeters = -1 }
+    private fun reset() { destination = null; nearDestination = false; doorOpened = false; overstaySaid = false; lastRemainMin = 0; routeMeters = -1 }
 }
