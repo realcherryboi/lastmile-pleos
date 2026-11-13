@@ -4,7 +4,6 @@ enum class TripState { IDLE, ARMED, BRIEF_3KM, BRIEF_1KM, BRIEF_300M, STOPPING, 
 
 enum class GearPosition { P, R, N, D, UNKNOWN }
 
-enum class TurnSide { OFF, LEFT, RIGHT }
 
 /**
  * 이번 경로의 이정표 하나. 경로가 짧으면(3 km 미만) 첫 이정표는 "출발"이 되고, 출발점과 300 m 안에 겹치는 이정표는 빠진다.
@@ -22,7 +21,6 @@ sealed class TripEvent {
     data class BrakeHeld(val held: Boolean) : TripEvent()      // 브레이크 페달 N초 유지 (비상등 대체)
     data class Gear(val position: GearPosition) : TripEvent()
     data class ParkingBrake(val on: Boolean) : TripEvent()
-    data class TurnSignal(val side: TurnSide) : TripEvent()    // 우측 깜빡이 = 길가에 세울 의도 (우측 통행)
     data class Door(val open: Boolean) : TripEvent()           // 승객석 문 (열림 → 닫힘 = 승하차 완료)
     data class EvSoc(val percent: Int) : TripEvent()           // EV 배터리 잔량 %
     object Reset : TripEvent()
@@ -39,10 +37,12 @@ sealed class TripAction {
 /**
  * 순수 함수형 상태머신. 속도·기어 외에 "차가 멈췄다"를 증명하는 신호 조합:
  *   도착 = (내비 도착 이벤트 또는 지오펜스 진입) AND (기어 P 또는 주차 브레이크 ON)
- *   잠시 정차 = 비상등 ON · 브레이크 3초 유지 · 우측 방향지시등 (300m 이내)
+ *   잠시 정차 = 목적지 100 m 안에서 브레이크 3초 유지(또는 비상등 ON — 서드파티에 열리면)
+ *     방향지시등은 쓰지 않는다: 300 m 안 우회전마다 안내가 떠 번거롭다는 대표 판단(11/13). 브레이크도 신호 대기와 헷갈리지 않게 100 m 안에서만.
  *   승하차 완료 = 도착 후 승객석 문이 열렸다 닫힘 → DONE
  */
 class TripStateMachine {
+    companion object { const val STOP_INTENT_M = 100 }   // 이 거리 안에서 멈춰 서면 "여기 세우려는구나"로 본다
     var state: TripState = TripState.IDLE
         private set
     var destination: Destination? = null
@@ -77,6 +77,7 @@ class TripStateMachine {
     private var parked = false               // gear P or parking brake
     private var doorOpened = false           // ARRIVED 이후 문이 열린 적 있음
     private var lastRemainMin = 0
+    private var lastRemainM = -1             // 마지막 내비 남은 거리(m), -1 = 모름
 
     /** 보강된 목적지 데이터(주소·주차장)로 교체. 같은 id 일 때만. */
     fun updateDestination(d: Destination) { if (destination?.id == d.id) destination = d }
@@ -90,7 +91,7 @@ class TripStateMachine {
                 reset(); destination = event.destination; transition(TripState.ARMED, out)
             }
             is TripEvent.RemainDistance -> if (d != null) {
-                lastRemainMin = maxOf(1, event.remainSec / 60)
+                lastRemainMin = maxOf(1, event.remainSec / 60); lastRemainM = event.meters
                 if (routeMeters < 0 && event.meters > 0) routeMeters = event.meters   // 첫 남은 거리 = 경로 길이 → 이정표 계획 확정
                 when {
                     // 3 km 지점 브리핑. 경로가 3 km 미만이면 출발 직후 바로 나간다(출발 브리핑) — 문장은 "○○까지 N분 남았어요" 전이에요"라 그대로 맞는다.
@@ -112,11 +113,8 @@ class TripStateMachine {
             }
             is TripEvent.NaviArrived -> { nearDestination = true; checkArrival(d, out) }
             is TripEvent.GeofenceEnter -> { nearDestination = event.entered || nearDestination; checkArrival(d, out) }
-            is TripEvent.Hazard -> if (d != null && event.on) stopping(d, out)
-            is TripEvent.BrakeHeld -> if (d != null && event.held) stopping(d, out)
-            is TripEvent.TurnSignal -> if (d != null && event.side == TurnSide.RIGHT && inLastStretch()) {
-                stopping(d, out)
-            }
+            is TripEvent.Hazard -> if (d != null && event.on && inLastStretch()) stopping(d, out)
+            is TripEvent.BrakeHeld -> if (d != null && event.held && lastRemainM in 0..STOP_INTENT_M) stopping(d, out)
             is TripEvent.Gear -> { parked = event.position == GearPosition.P; checkArrival(d, out) }
             is TripEvent.ParkingBrake -> { if (event.on) parked = true; checkArrival(d, out) }
             is TripEvent.EvSoc -> evSoc = event.percent
@@ -132,7 +130,7 @@ class TripStateMachine {
     private fun inLastStretch() = state == TripState.BRIEF_300M || skip300m && state in listOf(TripState.BRIEF_3KM, TripState.BRIEF_1KM)
 
     private fun stopping(d: Destination, out: MutableList<TripAction>) {
-        if (state in listOf(TripState.BRIEF_300M, TripState.BRIEF_1KM) || skip1km && state == TripState.BRIEF_3KM) { transition(TripState.STOPPING, out); out += TripAction.Speak(Briefing.stopping(d, purpose), if (purpose == TripPurpose.PARK) "주차장 안내" else "잠시 정차") }
+        if (state in listOf(TripState.BRIEF_3KM, TripState.BRIEF_1KM, TripState.BRIEF_300M)) { transition(TripState.STOPPING, out); out += TripAction.Speak(Briefing.stopping(d, purpose), if (purpose == TripPurpose.PARK) "주차장 안내" else "잠시 정차") }
     }
 
     private fun checkArrival(d: Destination?, out: MutableList<TripAction>) {

@@ -10,10 +10,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- Pleos SDK 권한 (AAR 분석으로 확정, 최소 범위): 기어=CAR_DRIVE, 경고등=CAR_SAFETY, 방향지시등=CAR_LIGHTS -->
+    <!-- Pleos SDK 권한 (AAR 분석으로 확정, 최소 범위): 기어=CAR_DRIVE, 경고등=CAR_SAFETY -->
     <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
     <uses-permission android:name="pleos.car.permission.CAR_SAFETY" />
-    <uses-permission android:name="pleos.car.permission.CAR_LIGHTS" />
     <uses-permission android:name="pleos.car.permission.CAR_DOORS" />
     <uses-permission android:name="pleos.car.permission.CAR_ENERGY" />
     <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />

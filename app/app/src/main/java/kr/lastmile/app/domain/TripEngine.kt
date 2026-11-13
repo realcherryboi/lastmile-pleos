@@ -135,7 +135,6 @@ class TripEngine private constructor(
                 main.removeCallbacks(brakeHold)
                 if (pressed) main.postDelayed(brakeHold, BRAKE_HOLD_MS)
             }
-            override fun onTurnSignal(side: TurnSide) = post { if (side != TurnSide.OFF) addLog("방향지시등: $side"); dispatch(TripEvent.TurnSignal(side)) }
             override fun onDoor(open: Boolean) = post { if (open != _ui.value.doorOpen) { addLog("승객석 문: ${if (open) "열림" else "닫힘"}"); _ui.value = _ui.value.copy(doorOpen = open); if (open) rememberDrop(); dispatch(TripEvent.Door(open)) } }
             override fun onEvSoc(percent: Int) = post { if (percent != _ui.value.evSoc) { addLog("배터리: $percent%"); _ui.value = _ui.value.copy(evSoc = percent); dispatch(TripEvent.EvSoc(percent)) } }
             override fun onStatus(text: String) = status("차량", text)

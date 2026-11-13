@@ -66,7 +66,7 @@
 ### 임의 목적지 (A) · 차량 신호 심화 (C) — 11/5 저녁
 - **임의 목적지**: NaviHelper `onDestinationInfo(name, lat, lng)` 가 등록 장소와 안 맞으면 `Destination.generic()` 으로 바로 ARMED. `rulesKnown=false` 라 안내 문장이 "정차 규칙 정보가 없는 곳이라 일반 도로 기준 5분 이내 정차로 안내할게요"로 바뀌고, 상세 사실 행에 "일반 도로 기준"을 표시한다.
 - **보강(OsmEnricher)**: 주소는 Nominatim 역지오코딩(키 없음, User-Agent 필수), 주차장·충전소·도로 방위는 `ZoneMap.nearby()` 가 이미 내려받은 OpenFreeMap 벡터 타일의 `poi`(class parking / charging_station)·`transportation` 레이어를 `VectorSource.querySourceFeatures` 로 조회한다. 서버 호출이 없어 Overpass 같은 공개 API의 과부하(테스트 중 502)에 흔들리지 않는다. 지도가 멈출 때(onDidBecomeIdle) 최대 6회 재시도. 찾은 주차장은 절대 좌표 `ZoneSpot(lat,lng)` 로 지도에 찍힌다. 에뮬레이터 검증: 판교역 → "판교공영주차장 166 m", 주소 "경기도 성남시 분당구 판교역로146번길".
-- **차량 신호**: 우측 방향지시등(300 m 이내) → STOPPING, 승객석 문(조수석·뒷좌석) 열림→닫힘(ARRIVED 이후) → DONE "승하차 확인했어요"(정차 타이머 '완료', 버튼 '출발'), EV SoC ≤20% → 3 km 브리핑에 충전기 문장 + 안내 중 카드에 배터리 행. 모두 `TripStateMachine` 이벤트(TurnSignal/Door/EvSoc)로 들어온다. Virtual Console 주입: `PUT /vehicle/turn-signal?mode=BlinkRight`, `PUT /vehicle/body?door_fr=true|false`, `PUT /vehicle/ev-battery?field=soc&value=18` (브라우저 세션 하트비트 필요).
+- **차량 신호**: ~~우측 방향지시등(300 m 이내)~~ → 11/13 목적지 100 m 안 브레이크 3초 유지 → STOPPING, 승객석 문(조수석·뒷좌석) 열림→닫힘(ARRIVED 이후) → DONE "승하차 확인했어요"(정차 타이머 '완료', 버튼 '출발'), EV SoC ≤20% → 3 km 브리핑에 충전기 문장 + 안내 중 카드에 배터리 행. 모두 `TripStateMachine` 이벤트(TurnSignal/Door/EvSoc)로 들어온다. Virtual Console 주입: `PUT /vehicle/turn-signal?mode=BlinkRight`, `PUT /vehicle/body?door_fr=true|false`, `PUT /vehicle/ev-battery?field=soc&value=18` (브라우저 세션 하트비트 필요).
 
 ### 지도 모션 (키 없음)
 - 3D 건물: 타일 `building` 레이어를 `FillExtrusionLayer`(render_height) 로, 줌 15 이상. 목적지 좌표 위 건물은 `queryRenderedFeatures` 로 찾아 파랑 3D 로 강조(`lm-3d-dest`).
@@ -94,13 +94,13 @@
 - [x] 주행 중 동영상/자동 애니메이션 없음 (전환 스프링은 사용자 조작·상태 변화에만, 0.5초 내 정지)
 - [x] Portrait/Landscape 레이아웃 (`layout-port/` 별도 — 실제 세로 창은 FormFactorConsole로 재확인 필요)
 - [x] CarUxRestrictions 수신·반영 (키보드 제한)
-- [x] Vehicle SDK 6종 신호(기어·브레이크·경고등·방향지시등·문·EV 배터리) + NaviHelper 임의 목적지 + FusedLocation 지오펜스 + TTS/STT — 5개 SDK 전부 핵심 흐름에 사용
+- [x] Vehicle SDK 5종 신호(기어·브레이크·경고등·문·EV 배터리, 방향지시등은 11/13 제외) + NaviHelper 임의 목적지 + FusedLocation 지오펜스 + TTS/STT — 5개 SDK 전부 핵심 흐름에 사용
 - [x] 백그라운드 복귀 시 상태 복원 (엔진 Application 상주)
 - [x] Adaptive icon (fg/bg 분리)
 - [ ] 더미 데이터 금지 — 데모 목적지 5곳은 "내장 샘플"이 아니라 실제 장소 데이터로 교체 필요 (제출 전)
 - [x] 릴리즈 서명 APK (`apk/김상헌_라스트마일_release.apk`, 11/5 스프링 모션·유리 오버레이 포함 재빌드)
 - [ ] 폼팩터 테스트(12.9" Portrait, 14.6" Landscape) — FormFactorConsole 앱으로 재확인
-- [ ] Vehicle SDK 퍼미션(CAR_DRIVE·CAR_LIGHTS·CAR_DOORS·CAR_ENERGY) 앱마켓 사전 협의
+- [ ] Vehicle SDK 퍼미션(CAR_DRIVE·CAR_DOORS·CAR_ENERGY) 앱마켓 사전 협의
 
 ## 5. 알려진 제약
 - `안내 종료` 시 내비 경로 취소 → 내비가 앞으로 옴. 앱으로 돌아오려면 GNB 앱 라이브러리에서 선택하거나 `am start`(singleTask 라 기존 화면 복귀) (Pleos 윈도 정책).
@@ -178,6 +178,12 @@
 - 출발·3 km(정차·금지): "… 정문 앞은 황색 실선이라 세울 수 없어요. 대신 뒤편 공영주차장으로 안내할게요. 요금은 …" / (정차·가능): "… 정문 앞은 황색 점선이라 5분까지 세울 수 있어요. 오래 기다리시면 지하주차장이 있어요. 요금은 …"
 - 충전기: 가는 주차장에 충전기가 있으면 "따로 들를 필요 없이 세워 두는 동안 충전"이 핵심이라 그걸 말하고, 다른 곳이면 "정문에서 120미터 ○○에 충전기가 있어요". "발렛은 없어요"처럼 없는 것은 말하지 않는다(있을 때만 "발렛도 있어요").
 - 300 m: "잠시 후 우회전하면 바로 주차장 입구예요." 지난 자리: "지난번엔 정문 지나서 20미터에서 내리셨어요."(존댓말).
-- 깜빡이(주차 목적): "주차 목적이라 여기 말고 뒤편 공영주차장 입구까지 가 주세요." 도착: "뒤편 공영주차장에 도착했어요. 요금은 10분 300원이에요." (마중 알림은 맨 뒤 "기다리는 분께 도착을 알렸어요.")
+- 100 m 안 브레이크 정차(주차 목적): "주차 목적이라 여기 말고 뒤편 공영주차장 입구까지 가 주세요." 도착: "뒤편 공영주차장에 도착했어요. 요금은 10분 300원이에요." (마중 알림은 맨 뒤 "기다리는 분께 도착을 알렸어요.")
 - 승하차(주차 목적): "승하차 확인했어요. 내리신 자리는 기억해 뒀다가 다음에 알려 드릴게요." — 주차한 뒤라 "안전 운전하세요"를 뺐다. 정차·픽업은 "… 안전 운전하세요."
 - 검증: `app/src/test/.../BriefingTest.kt`(JUnit, `./gradlew testSdkDebugUnitTest`) — 데모 문장 고정 + 배터리 문장이 할 일 뒤에 오는지 + 목적별 대본 전체 출력.
+
+## 정차 의도 판정에서 방향지시등 제외 — 11/13 (대표: "300 m 안에서 우회전할 때마다 알림 뜨면 짜증난다")
+- 우측 방향지시등은 목적지 근처 우회전과 구별이 안 돼 정차 의도 트리거에서 뺐다. 구독·`CAR_LIGHTS` 권한·디버그 버튼까지 제거(쓰지 않는 권한은 요청하지 않는다).
+- 남은 트리거 브레이크 3초 유지도 1 km 안 신호 대기와 헷갈리므로 **내비 남은 거리 100 m 안**에서만 본다(`TripStateMachine.STOP_INTENT_M`). 비상등은 서드파티에 열리면 300 m 구간에서 쓴다.
+- 단위 테스트 `TripStateMachineTest`: 900 m·250 m 브레이크는 무시, 80 m 브레이크는 STOPPING + 차선 문장.
+- 데모: 300 m 뒤 내비 남은 거리 100 m 에서 Virtual Console `controls?brake=60` 4.5초 → 헤드업 "주차장 안내"(주차 목적).

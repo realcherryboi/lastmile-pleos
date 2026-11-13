@@ -2,7 +2,6 @@ package kr.lastmile.app.source
 
 import kr.lastmile.app.domain.Destination
 import kr.lastmile.app.domain.GearPosition
-import kr.lastmile.app.domain.TurnSide
 
 /** 화면 버튼·슬라이더로 신호를 흉내 낸다. 에뮬레이터에서 내비 연동이 안 될 때의 폴백이기도 하다. */
 class MockNaviSource : NaviSource {
@@ -27,7 +26,6 @@ class MockVehicleSignalSource : VehicleSignalSource {
     fun hazard(on: Boolean) = listener?.onHazard(on)
     fun parkingBrake(on: Boolean) = listener?.onParkingBrake(on)
     fun brake(pressed: Boolean) = listener?.onBrakePedal(pressed)
-    fun turn(side: TurnSide) = listener?.onTurnSignal(side)
     fun door(open: Boolean) = listener?.onDoor(open)
     fun soc(percent: Int) = listener?.onEvSoc(percent)
 }

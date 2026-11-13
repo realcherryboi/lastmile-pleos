@@ -1,7 +1,6 @@
 package kr.lastmile.app.source
 
 import kr.lastmile.app.domain.GearPosition
-import kr.lastmile.app.domain.TurnSide
 import kr.lastmile.app.domain.Destination
 import kr.lastmile.app.domain.NaviChargingStop
 
@@ -33,14 +32,13 @@ interface NaviSource {
     fun addWaypoint(name: String, lat: Double, lng: Double) {}
 }
 
-/** 차량 신호. 실구현: Vehicle SDK(Gear·Safety.Telltales·TurnSignal·Door·EvBattery). */
+/** 차량 신호. 실구현: Vehicle SDK(Gear·Brake·Safety.Telltales·Door·EvBattery). */
 interface VehicleSignalSource {
     interface Listener {
         fun onGear(position: GearPosition)
         fun onHazard(on: Boolean)
         fun onParkingBrake(on: Boolean)
         fun onBrakePedal(pressed: Boolean) {}
-        fun onTurnSignal(side: TurnSide) {}
         /** 승객석(조수석·뒷좌석) 문 중 하나라도 열려 있으면 true */
         fun onDoor(open: Boolean) {}
         fun onEvSoc(percent: Int) {}

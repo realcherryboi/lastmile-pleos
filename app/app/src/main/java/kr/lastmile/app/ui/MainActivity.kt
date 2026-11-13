@@ -47,7 +47,6 @@ import kr.lastmile.app.domain.GearPosition
 import kr.lastmile.app.domain.TripEngine
 import kr.lastmile.app.domain.Milestone
 import kr.lastmile.app.domain.TripState
-import kr.lastmile.app.domain.TurnSide
 import kr.lastmile.app.domain.UiState
 import kr.lastmile.app.service.LastMileService
 import kr.lastmile.app.source.MockLocationSource
@@ -672,7 +671,6 @@ class MainActivity : AppCompatActivity() {
         v.findViewById<View>(R.id.btnGearD).setOnClickListener { veh?.gear(GearPosition.D) }
         v.findViewById<View>(R.id.btnGearP).setOnClickListener { veh?.gear(GearPosition.P) }
         v.findViewById<View>(R.id.btnGeofence).setOnClickListener { loc?.enter() }
-        v.findViewById<View>(R.id.btnTurnRight).setOnClickListener { veh?.turn(TurnSide.RIGHT); v.postDelayed({ veh?.turn(TurnSide.OFF) }, 2000) }
         v.findViewById<View>(R.id.btnDoor).setOnClickListener { veh?.door(true); v.postDelayed({ veh?.door(false) }, 1500) }
         v.findViewById<View>(R.id.btnSoc).setOnClickListener { veh?.soc(15) }
         v.findViewById<View>(R.id.btnChargeOps).setOnClickListener { engine.navi.requestChargerOperators() }

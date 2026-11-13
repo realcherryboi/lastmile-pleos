@@ -129,7 +129,7 @@ object Briefing {
     /** "지난번엔 정문 지나서 20미터에서 내리셨어요." */
     fun dropLine(d: Destination): String? = d.drop?.let { "지난번엔 ${DropMemory.describe(d, it, "미터")}에서 내리셨어요." }
 
-    /** 우측 깜빡이·브레이크로 "여기 세우려나" 싶을 때. 이유 → 할 일 순서. */
+    /** 목적지 100 m 안에서 브레이크로 멈춰 "여기 세우려나" 싶을 때. 이유 → 할 일 순서. */
     fun stopping(d: Destination, purpose: TripPurpose = TripPurpose.STOP): String = when {
         purpose == TripPurpose.PARK -> if (d.parkingName.isNotBlank()) "주차 목적이라 여기 말고 ${d.parkingName} 입구까지 가 주세요." else "주차장 정보가 없어요. 여기는 잠깐만 세우세요."
         !d.rulesKnown -> "정차 규칙 정보가 없는 곳이에요. 일반 도로 기준으로 5분 안에만 세우세요."

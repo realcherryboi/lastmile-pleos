@@ -67,8 +67,11 @@ step "1 km → 300 m (내비 남은 거리로 브리핑 → 헤드업 카드가 
 wait_until 1000 150; sleep 1.5; shot 04_1km
 wait_until 300 120; sleep 1.5; shot 05_300m
 
-step "우측 방향지시등 → 잠시 정차(STOPPING) 헤드업"
-curl -s -X PUT "$VC/vehicle/turn-signal?mode=BlinkRight" >/dev/null; sleep 2; shot 06_stopping; curl -s -X PUT "$VC/vehicle/turn-signal?mode=Off" >/dev/null
+step "목적지 100 m 안에서 브레이크 3초 유지 → 정차 의도(STOPPING) 헤드업"
+# 방향지시등은 쓰지 않는다(11/13 대표: 300 m 안 우회전마다 안내가 떠 번거롭다). 브레이크도 신호 대기와 헷갈리지 않게 100 m 안에서만 본다.
+wait_until 100 60
+curl -s -X PUT "$VC/vehicle/controls?speed=0&accelerator=0&brake=60&steering=0" >/dev/null; sleep 4.5; shot 06_stopping
+curl -s -X PUT "$VC/vehicle/controls?speed=0&accelerator=0&brake=0&steering=0" >/dev/null
 
 step "내비 도착 → 기어 P → ARRIVED (앱이 스스로 전체 창으로 앞에 나옴 + 주차장·도착 구역 지도)"
 wait_until 0 90; sleep 3
