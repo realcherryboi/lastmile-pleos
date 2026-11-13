@@ -286,8 +286,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun curbText(d: Destination) = when { !d.rulesKnown -> "정문 앞 5분 이내 · 일반 도로 기준"; d.curbsideAllowed -> "정문 앞 ${d.curbsideLimitMin}분까지"; else -> "정문 앞 정차 금지" } + if (d.curb.known) " · ${d.curb.label}" else ""
-    /** "정문 지나서 20 m에서 내림 · 3회" — 승객석 문이 열렸던 자리 (기기 내 기억) */
+    private fun curbText(d: Destination) = when { !d.rulesKnown -> "목적지 부근 5분 이내 · 일반 도로 기준"; d.curbsideAllowed -> "목적지 부근 ${d.curbsideLimitMin}분까지"; else -> "목적지 부근 정차 금지" } + if (d.curb.known) " · ${d.curb.label}" else ""
+    /** "목적지 지나서 20 m에서 내림 · 3회" — 승객석 문이 열렸던 자리 (기기 내 기억) */
     private fun dropText(d: Destination) = d.drop?.let { "${DropMemory.describe(d, it)}에서 내림 · ${d.dropCount}회" + if (d.dropNew) " · 방금 기억" else "" }
     private fun renderDropRow(root: View, id: Int, d: Destination) { val t = dropText(d); Motion.setVisible(root.findViewById(id), t != null, fromY = 8 * dp); if (t != null) setFact(root, id, t) }
     private fun parkingText(d: Destination) = when { d.parkingName.isBlank() -> if (d.isGeneric) "주변 주차장 찾는 중" else "정보 없음"; d.parkingFee.isNotBlank() -> "${d.parkingName} · ${d.parkingFee}"; d.parkingDistanceM >= 0 -> "${d.parkingName} · ${d.parkingDistanceM} m"; else -> d.parkingName }
@@ -558,7 +558,7 @@ class MainActivity : AppCompatActivity() {
             ar.findViewById<View>(R.id.curbProgress).visibility = if (park) View.GONE else View.VISIBLE
             if (park) {
                 curbTitle.text = "주차하면 끝"; curbIcon.setImageResource(R.drawable.ic_parking); curbIcon.setColorFilter(getColor(R.color.success))
-                curbHint.text = (if (d.parkingName.isNotBlank()) "${d.parkingName}에 세우세요. " else "") + (if (d.curb.known) "정문 앞은 ${d.curb.label}, ${d.curb.rule}." else "정차 타이머는 없어요.")
+                curbHint.text = (if (d.parkingName.isNotBlank()) "${d.parkingName}에 세우세요. " else "") + (if (d.curb.known) "목적지 부근은 ${d.curb.label}, ${d.curb.rule}." else "정차 타이머는 없어요.")
             } else if (s.purpose == TripPurpose.VIA) {
                 curbTitle.text = "경유 · 잠깐 멈춤"; curbIcon.setImageResource(R.drawable.ic_timer); curbIcon.setColorFilter(getColor(if (d.curbsideAllowed) R.color.success else R.color.negative))
                 curbHint.text = if (d.curbsideAllowed) "${d.curbsideLimitMin}분 안에 내리고 출발하세요. 문이 닫히면 다음 목적지로 이어가요." else "정차 금지 구역이에요. 바로 내리고 출발하세요."
@@ -567,7 +567,7 @@ class MainActivity : AppCompatActivity() {
                 curbHint.text = "${d.meetingPoint}에서 ${d.curbsideLimitMin}분까지 기다릴 수 있어요. 넘으면 ${d.parkingName}로 이동하세요."
             } else {
                 curbTitle.text = getString(R.string.curb_forbidden_title); curbIcon.setImageResource(R.drawable.ic_block); curbIcon.setColorFilter(getColor(R.color.negative))
-                curbHint.text = "정문 앞은 단속 구역이에요. ${d.parkingName}에 세우고 ${d.meetingPoint}에서 만나세요."
+                curbHint.text = "목적지 부근은 단속 구역이에요. ${d.parkingName}에 세우고 ${d.meetingPoint}에서 만나세요."
             }
             ar.findViewById<TextView>(R.id.parkName).text = d.parkingName.ifBlank { "주차장 정보 없음" }
             ar.findViewById<TextView>(R.id.parkFee).text = d.parkingFee

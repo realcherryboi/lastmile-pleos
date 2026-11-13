@@ -33,13 +33,13 @@
     <string name="depart">출발</string>
     <string name="stopping_title">잠시 정차</string>
     <string name="listening">듣고 있어요</string>
-    <string name="listening_hint">예) 주차 어디? · 정문 앞에 세워도 돼?</string>
+    <string name="listening_hint">예) 주차 어디? · 여기 세워도 돼?</string>
     <string name="state_idle">출발 전</string>
     <string name="state_armed">안내 대기</string>
     <string name="state_driving">안내 중</string>
     <string name="state_stopping">정차 중</string>
     <string name="state_arrived">도착</string>
-    <string name="parking_curb">정문</string>
+    <string name="parking_curb">부근</string>
     <string name="parking_valet">발렛</string>
     <string name="parking_lot">주차</string>
     <string name="remain_fmt_km">%.1f km</string>

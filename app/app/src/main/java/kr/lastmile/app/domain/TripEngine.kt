@@ -225,7 +225,7 @@ class TripEngine private constructor(
     fun addChargerWaypoint() {
         val c = machine.destination?.charger ?: return
         navi.addWaypoint(c.name, c.lat, c.lng); _ui.value = _ui.value.copy(chargerWaypointAdded = true)
-        say("정문 대신 ${c.name} 충전기 자리로 안내할게요."); addLog("충전기 경유지 요청: ${c.name}")
+        say("목적지 대신 ${c.name} 충전기 자리로 안내할게요."); addLog("충전기 경유지 요청: ${c.name}")
     }
 
     /** 개발용: 내비 콜백과 같은 경로로 임의 목적지를 넣는다 (에뮬레이터 내비 검색 없이 A 시나리오 재현). */

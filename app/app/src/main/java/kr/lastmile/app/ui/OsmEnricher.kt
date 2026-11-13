@@ -51,15 +51,15 @@ object OsmEnricher {
     fun merge(d: Destination, address: String, nearby: ZoneMap.Nearby): Destination {
         val parking = nearby.parking
         val zone = ArrayList<ZoneSpot>()
-        zone += ZoneSpot("entrance", "정문", 0, "5분 이내 · 일반 도로 기준")
-        zone += ZoneSpot("meeting", "만남 · 정문 앞", 0, "")
+        zone += ZoneSpot("entrance", "목적지", 0, "5분 이내 · 일반 도로 기준")
+        zone += ZoneSpot("meeting", "만남 · 목적지 앞", 0, "")
         parking?.let { zone += ZoneSpot("parking", it.name, 0, "${it.distanceM} m", it.lat, it.lng) }
         nearby.charger?.let { zone += ZoneSpot("charger", "EV 충전", 0, "${it.distanceM} m", it.lat, it.lng) }
         return d.copy(
             address = address.ifBlank { d.address },
             parkingName = parking?.name ?: d.parkingName,
             parkingDistanceM = parking?.distanceM ?: d.parkingDistanceM,
-            parkingHint = parking?.let { "가장 가까운 주차장은 ${it.name}, 정문에서 ${it.distanceM}미터예요." } ?: d.parkingHint,
+            parkingHint = parking?.let { "가장 가까운 주차장은 ${it.name}, 목적지에서 ${it.distanceM}미터예요." } ?: d.parkingHint,
             parkingCharger = nearby.charger?.let { c -> parking != null && c.distanceM <= parking.distanceM + 60 } ?: d.parkingCharger,
             roadBearing = nearby.roadBearing ?: d.roadBearing,
             zone = zone,

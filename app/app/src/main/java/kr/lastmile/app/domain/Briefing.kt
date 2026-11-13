@@ -44,16 +44,16 @@ object Briefing {
         val valet = if (d.valet) " 발렛도 있어요." else ""
         val line = d.curb
         val body = when {
-            purpose == TripPurpose.PARK -> if (d.parkingName.isBlank()) " 주차장 정보가 없어서 정문 앞까지 안내할게요."
-                else " 주차 목적이라 정문 대신 ${d.parkingName}${ro(d.parkingName)} 안내할게요.${feeLine(d)}$valet"
+            purpose == TripPurpose.PARK -> if (d.parkingName.isBlank()) " 주차장 정보가 없어서 목적지까지 안내할게요."
+                else " 주차 목적이라 ${d.parkingName}${ro(d.parkingName)} 바로 안내할게요.${feeLine(d)}$valet"
             !d.rulesKnown -> " 처음 가는 곳이라 정차 규칙 정보가 없어요. 일반 도로 기준으로 5분 안에만 세우시고, 주정차 단속에 주의하세요." +
                 (if (d.parkingName.isNotBlank() && d.parkingDistanceM >= 0) " 가까운 주차장은 ${d.parkingName}, ${d.parkingDistanceM}미터예요." else "")
-            d.curbsideAllowed -> " 정문 앞은 ${if (line.known) "${line.label}이라 " else ""}${d.curbsideLimitMin}분까지 세울 수 있어요." +
+            d.curbsideAllowed -> " 목적지 부근은 ${if (line.known) "${line.label}이라 " else ""}${d.curbsideLimitMin}분까지 세울 수 있어요." +
                 (if (d.parkingName.isNotBlank()) " 오래 기다리시면 ${d.parkingName}${iga(d.parkingName)} 있어요.${feeLine(d)}" else "") + valet
             // 대표 문장(11/13): "1번출구 앞은 황색 실선이라 정차 금지고 뒤편 공영주차장은 10분 300원, 5분 회차 무료예요."
-            d.parkingName.isNotBlank() -> " 정문 앞은 ${if (line.known) "${line.label}이라 " else ""}정차 금지고 " +
+            d.parkingName.isNotBlank() -> " 목적지 부근은 ${if (line.known) "${line.label}이라 " else ""}정차 금지고 " +
                 (if (d.parkingFee.isNotBlank()) "${d.parkingName}${eunneun(d.parkingName)} ${d.parkingFee}${ieyo(d.parkingFee)}." else "${d.parkingName}${ro(d.parkingName)} 안내할게요.") + valet
-            else -> " 정문 앞은 ${if (line.known) "${line.label}이라 " else "정차 금지라 "}세울 수 없어요. 주변 주차장을 찾아 주세요.$valet"
+            else -> " 목적지 부근은 ${if (line.known) "${line.label}이라 " else "정차 금지라 "}세울 수 없어요. 주변 주차장을 찾아 주세요.$valet"
         }
         return head + body + charger(d, evSoc, purpose)
     }
@@ -77,9 +77,9 @@ object Briefing {
         }
     }
 
-    /** "정문에서 120미터 환경부 충전소에 빈 충전기 2대 있어요." — 아는 것만 말한다. */
+    /** "목적지에서 120미터 환경부 충전소에 빈 충전기 2대 있어요." — 아는 것만 말한다. */
     fun chargerLine(c: ChargerCandidate): String {
-        val where = "정문에서 ${c.distanceM}미터 ${c.name}"
+        val where = "목적지에서 ${c.distanceM}미터 ${c.name}"
         val status = when {
             c.live -> "에 빈 충전기 ${c.available}대 있어요."
             c.maxKw > 0 -> "에 ${c.maxKw}킬로와트 충전기가 있어요."
@@ -92,12 +92,12 @@ object Briefing {
     /** 정문 → 주차장 입구 거리 (보강값 또는 등록 데이터의 주차장 오프셋) */
     fun parkingDistance(d: Destination): Int = if (d.parkingDistanceM >= 0) d.parkingDistanceM else d.zone.firstOrNull { it.type == "parking" && !it.absolute }?.offsetM?.let { kotlin.math.abs(it) } ?: -1
 
-    /** "주차장 입구는 정문 지나서 30미터예요" / "주차장 입구로 안내할게요" */
+    /** "주차장 입구는 목적지 지나서 30미터예요" / "주차장 입구로 안내할게요" (정문은 목적지마다 달라 목적지 좌표를 기준점으로 말한다, 대표 11/13) */
     private fun parkingEntrance(d: Destination): String {
         val name = d.parkingName.ifBlank { "주차장" }
         val m = parkingDistance(d)
         val off = d.zone.firstOrNull { it.type == "parking" && !it.absolute }?.offsetM ?: 0
-        return if (m > 0) "$name 입구는 정문 ${if (off < 0) "${m}미터 전" else "지나서 ${m}미터"}예요." else "$name 입구로 안내할게요."
+        return if (m > 0) "$name 입구는 목적지 ${if (off < 0) "${m}미터 전" else "지나서 ${m}미터"}예요." else "$name 입구로 안내할게요."
     }
 
     /**
@@ -106,17 +106,17 @@ object Briefing {
      */
     fun at1km(d: Destination, purpose: TripPurpose = TripPurpose.STOP, purposeChanged: Boolean = false): String {
         val line = d.curb
-        if (!d.rulesKnown) return "1킬로 남았어요. 정문 앞 차선을 보세요. 황색 점선이면 5분, 실선이면 세울 수 없어요."
+        if (!d.rulesKnown) return "1킬로 남았어요. 목적지 부근 차선을 보세요. 황색 점선이면 5분, 실선이면 세울 수 없어요."
         if (purposeChanged) return "1킬로 남았어요. " + when {
             purpose == TripPurpose.PARK -> "주차로 바꾸셨으니 ${parkingEntrance(d)}"
-            d.curbsideAllowed && line.known -> "정문 앞 ${line.label}, ${d.curbsideLimitMin}분까지 세울 수 있어요."
-            d.curbsideAllowed -> "정문 앞에 ${d.curbsideLimitMin}분까지 세울 수 있어요."
-            line.known -> "정문 앞은 ${line.label}이라 못 세워요. ${parkingEntrance(d)}"
-            else -> "정문 앞은 정차 금지예요. ${parkingEntrance(d)}"
+            d.curbsideAllowed && line.known -> "목적지 부근은 ${line.label}, ${d.curbsideLimitMin}분까지 세울 수 있어요."
+            d.curbsideAllowed -> "목적지 부근에 ${d.curbsideLimitMin}분까지 세울 수 있어요."
+            line.known -> "목적지 부근은 ${line.label}이라 못 세워요. ${parkingEntrance(d)}"
+            else -> "목적지 부근은 정차 금지예요. ${parkingEntrance(d)}"
         }
         return "1킬로 남았어요. " + when {
-            purpose == TripPurpose.PARK -> if (d.parkingName.isNotBlank()) parkingEntrance(d) else "정문 앞에 세우고 주차 자리를 보세요."
-            d.curbsideAllowed -> "정문 앞에 ${d.curbsideLimitMin}분까지 세울 수 있어요."
+            purpose == TripPurpose.PARK -> if (d.parkingName.isNotBlank()) parkingEntrance(d) else "목적지 부근에 세우고 주차 자리를 찾아 보세요."
+            d.curbsideAllowed -> "목적지 부근에 ${d.curbsideLimitMin}분까지 세울 수 있어요."
             else -> parkingEntrance(d)
         }
     }
@@ -138,7 +138,7 @@ object Briefing {
         } + drop
     }
 
-    /** "지난번엔 정문 지나서 20미터에서 내리셨어요." */
+    /** "지난번엔 목적지 지나서 20미터에서 내리셨어요." */
     fun dropLine(d: Destination): String? = d.drop?.let { "지난번엔 ${DropMemory.describe(d, it, "미터")}에서 내리셨어요." }
 
     /** 목적지 100 m 안에서 브레이크로 멈춰 "여기 세우려나" 싶을 때. 이유 → 할 일 순서. */
@@ -184,14 +184,14 @@ object Briefing {
             u.contains("주차") || u.contains("어디") -> when {
                 d.parkingName.isBlank() -> "주차장 정보가 없어요."
                 d.parkingFee.isNotBlank() -> "${d.parkingName}, ${d.parkingFee}예요."
-                else -> "${d.parkingName}, 정문에서 ${d.parkingDistanceM}미터예요."
+                else -> "${d.parkingName}, 목적지에서 ${d.parkingDistanceM}미터예요."
             }
             u.contains("지난번") || u.contains("내렸") || u.contains("저번") -> dropLine(d) ?: "이 곳은 처음이에요. 내리면 자리를 기억해 둘게요."
-            u.contains("차선") || u.contains("점선") || u.contains("실선") -> if (d.curb.known) "정문 앞은 ${d.curb.label}이에요. ${d.curb.rule}." else "차선 정보가 없어요. 황색 점선이면 5분 정차, 실선이면 금지예요."
+            u.contains("차선") || u.contains("점선") || u.contains("실선") -> if (d.curb.known) "목적지 부근은 ${d.curb.label}이에요. ${d.curb.rule}." else "차선 정보가 없어요. 황색 점선이면 5분 정차, 실선이면 금지예요."
             u.contains("세워") || u.contains("정차") || u.contains("앞") -> when {
-                !d.rulesKnown -> "정문 앞은 일반 도로 기준 5분 이내 정차예요. 주정차 단속에 주의하세요."
-                d.curbsideAllowed -> "정문 앞은 ${if (d.curb.known) "${d.curb.label}, " else ""}${d.curbsideLimitMin}분까지 정차 가능해요."
-                else -> "정문 앞은 ${if (d.curb.known) "${d.curb.label}이라 " else ""}정차 금지예요. 주차장 입구가 더 가까워요."
+                !d.rulesKnown -> "목적지 부근은 일반 도로 기준 5분 이내 정차예요. 주정차 단속에 주의하세요."
+                d.curbsideAllowed -> "목적지 부근은 ${if (d.curb.known) "${d.curb.label}, " else ""}${d.curbsideLimitMin}분까지 정차 가능해요."
+                else -> "목적지 부근은 ${if (d.curb.known) "${d.curb.label}이라 " else ""}정차 금지예요. 주차장 입구가 더 가까워요."
             }
             u.contains("얼마") || u.contains("요금") -> if (d.parkingFee.isNotBlank()) "${d.parkingFee}${ieyo(d.parkingFee)}." else "요금 정보가 없어요."
             u.contains("발렛") -> if (d.valet) "발렛 있어요." else "발렛은 없어요."

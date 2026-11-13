@@ -48,8 +48,8 @@ data class Destination(
             name = name.ifBlank { "내비 목적지" }, category = "내비 목적지",
             latitude = lat, longitude = lng, arrivalRadiusM = 80f,
             curbsideAllowed = true, curbsideLimitMin = 5,     // 도로교통법상 정차 = 5분 이내. 단속 구역 여부는 현장 표지 기준
-            valet = false, parkingName = "", parkingFee = "", parkingHint = "", meetingPoint = "정문 앞", qa = emptyMap(),
-            zone = listOf(ZoneSpot("entrance", "정문", 0, "5분 이내 · 일반 도로 기준"), ZoneSpot("meeting", "만남 · 정문 앞", 0, "")),
+            valet = false, parkingName = "", parkingFee = "", parkingHint = "", meetingPoint = "목적지 앞", qa = emptyMap(),
+            zone = listOf(ZoneSpot("entrance", "목적지", 0, "5분 이내 · 일반 도로 기준"), ZoneSpot("meeting", "만남 · 목적지 앞", 0, "")),
             source = "navi", rulesKnown = false,
         )
     }

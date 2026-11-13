@@ -12,7 +12,7 @@ import kotlin.math.sin
 /**
  * 승하차 위치 기억 — "내린 자리".
  * 승객석 문이 열린 좌표는 그 목적지의 실제 승하차 지점이다(Vehicle SDK Door + FusedLocation). 목적지별로 기기 안에만 저장하고,
- * 다음에 같은 곳에 가면 "지난번엔 정문 지나서 20미터에서 내리셨어요"로 제안한다. 서버·키 없음, 폰 앱은 문 신호가 없어 만들 수 없는 데이터.
+ * 다음에 같은 곳에 가면 "지난번엔 목적지 지나서 20미터에서 내리셨어요"로 제안한다. 서버·키 없음, 폰 앱은 문 신호가 없어 만들 수 없는 데이터.
  */
 data class DropSpot(val lat: Double, val lng: Double, val atMs: Long, val purpose: String = "STOP")
 
@@ -49,19 +49,19 @@ object DropMemory {
         return spots.minByOrNull { a -> spots.sumOf { b -> meters(a.lat, a.lng, b.lat, b.lng) } }
     }
 
-    /** 정문 기준 설명. unit = " m"(화면) / "미터"(음성). 도로 방위(roadBearing) 기준으로 지나서/전/오른쪽/왼쪽. */
+    /** 목적지(좌표) 기준 설명 — 정문은 목적지마다 달라 "목적지 지나서 20 m" 처럼 말한다. unit = " m"(화면) / "미터"(음성). 도로 방위(roadBearing) 기준으로 지나서/전/오른쪽/왼쪽. */
     fun describe(d: Destination, s: DropSpot, unit: String = " m"): String {
         val dy = (s.lat - d.latitude) * 111_320.0
         val dx = (s.lng - d.longitude) * 111_320.0 * cos(Math.toRadians(d.latitude))
         val dist = hypot(dx, dy)
-        if (dist < 12) return "정문 바로 앞"
+        if (dist < 12) return "목적지 바로 앞"
         val th = Math.toRadians(d.roadBearing)
         val along = dx * sin(th) + dy * cos(th)
         val across = dx * cos(th) - dy * sin(th)
         val m = ((dist / 5).roundToInt() * 5).coerceAtLeast(5)
         return when {
-            abs(along) >= abs(across) -> if (along > 0) "정문 지나서 $m$unit" else "정문 $m$unit 전"
-            else -> if (across > 0) "정문 오른쪽 $m$unit" else "정문 왼쪽 $m$unit"
+            abs(along) >= abs(across) -> if (along > 0) "목적지 지나서 $m$unit" else "목적지 $m$unit 전"
+            else -> if (across > 0) "목적지 오른쪽 $m$unit" else "목적지 왼쪽 $m$unit"
         }
     }
 

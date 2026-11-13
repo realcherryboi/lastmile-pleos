@@ -23,7 +23,7 @@ class BriefingTest {
     @Test fun demoScriptParkPurpose() {
         val brief = Briefing.at3km(sodam, 12, evSoc = 18, purpose = TripPurpose.PARK)
         assertEquals(
-            "한식당 소담까지 12분 남았어요. 주차 목적이라 정문 대신 뒤편 공영주차장으로 안내할게요. 요금은 10분 300원이에요. " +
+            "한식당 소담까지 12분 남았어요. 주차 목적이라 뒤편 공영주차장으로 바로 안내할게요. 요금은 10분 300원이에요. " +
                 "참고로 배터리가 18퍼센트예요. 가시는 주차장에 충전기가 있어서, 세워 두는 동안 충전할 수 있어요.", brief)
         assertTrue(brief.indexOf("배터리") > brief.indexOf("안내할게요"))   // 배터리는 할 일 뒤
         assertEquals("주차 목적이라 여기 말고 뒤편 공영주차장 입구까지 가 주세요.", Briefing.stopping(sodam, TripPurpose.PARK))
@@ -35,7 +35,7 @@ class BriefingTest {
 
     @Test fun stopPurposeNoStoppingCurb() {
         assertEquals(
-            "한식당 소담까지 12분 남았어요. 정문 앞은 황색 실선이라 정차 금지고 뒤편 공영주차장은 10분 300원이에요.",
+            "한식당 소담까지 12분 남았어요. 목적지 부근은 황색 실선이라 정차 금지고 뒤편 공영주차장은 10분 300원이에요.",
             Briefing.at3km(sodam, 12, purpose = TripPurpose.STOP))
         assertEquals("뒤편 공영주차장에 도착했어요. 요금은 10분 300원이에요. 기다리는 분께 도착을 알렸어요.", Briefing.arrived(sodam, true, TripPurpose.STOP))
         assertEquals("지금 도착했어요. 정문 앞으로 나와 주세요.", Briefing.meetingArrived(sodam, TripPurpose.STOP))   // 주차장에 섰다
@@ -44,8 +44,8 @@ class BriefingTest {
 
     @Test fun stopPurposeAllowedCurbWithFarCharger() {
         val s = Briefing.at3km(hospital, 8, evSoc = 15, purpose = TripPurpose.STOP)
-        assertTrue(s, s.startsWith("성남시립병원까지 8분 남았어요. 정문 앞은 황색 점선이라 5분까지 세울 수 있어요."))
-        assertTrue(s, s.endsWith("참고로 배터리가 15퍼센트예요. 정문에서 120미터 시청 공영주차장 충전소에 충전기가 있어요."))
+        assertTrue(s, s.startsWith("성남시립병원까지 8분 남았어요. 목적지 부근은 황색 점선이라 5분까지 세울 수 있어요."))
+        assertTrue(s, s.endsWith("참고로 배터리가 15퍼센트예요. 목적지에서 120미터 시청 공영주차장 충전소에 충전기가 있어요."))
     }
 
     @Test fun userWordingForStopAndOverstay() {

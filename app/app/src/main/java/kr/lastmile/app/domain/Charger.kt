@@ -22,9 +22,9 @@ data class ChargerCandidate(
     val source: String = "tile",
 ) {
     val live get() = available >= 0
-    /** 카드 한 줄: "정문에서 120 m · 환경부 · 빈 충전기 2/4 · 50 kW" */
+    /** 카드 한 줄: "목적지에서 120 m · 환경부 · 빈 충전기 2/4 · 50 kW" */
     fun summary(): String = listOfNotNull(
-        "정문에서 $distanceM m",
+        "목적지에서 $distanceM m",
         operator.takeIf { it.isNotBlank() }?.let { if (preferred) "$it ★" else it },
         if (live) "빈 충전기 $available/$total" else if (total > 0) "충전기 ${total}대" else null,
         maxKw.takeIf { it > 0 }?.let { "$it kW" },

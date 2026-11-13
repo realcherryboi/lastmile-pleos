@@ -92,5 +92,5 @@ $ADB logcat -c
 $ADB shell input tap 2179 1212; sleep 15                      # 안내 시작 → 내비가 앞 (출발 브리핑 헤드업이 다 보일 때까지 기다린 뒤 시뮬레이션)
 simulate
 wait_until 1000 150; sleep 1.5; shot 10_1km_revisit
-wait_until 300 120; sleep 1.5; shot 11_300m_revisit           # "… 지난번엔 정문 지나서 20미터에서 내리셨어요."
+wait_until 300 120; sleep 1.5; shot 11_300m_revisit           # "… 지난번엔 목적지 지나서 20미터에서 내리셨어요."
 echo; echo "스크린샷: $SHOT"
