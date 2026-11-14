@@ -251,7 +251,7 @@ def polish(src, out, plan):
                 scrim = Image.new("RGBA", (W, H), INK + (0,)); scrim.putalpha(mask); im.alpha_composite(scrim)
                 def draw(dd, label=h["label"]):
                     dd.rounded_rectangle([x0b - pad, y0b - pad, x1b + pad, y1b + pad], radius=26, outline=BLUE + (int(255 * a),), width=7)
-                    tw = dd.textlength(label, font=f_lab); lx = (x0b + x1b) / 2 - tw / 2 - 32; ly = min(H - 110, y1b + pad + 26) + 12 * (1 - a)
+                    tw = dd.textlength(label, font=f_lab); lx = min(max(40, (x0b + x1b) / 2 - tw / 2 - 32), W - 40 - tw - 64); ly = min(H - 110, y1b + pad + 26) + 12 * (1 - a)
                     dd.rounded_rectangle([lx, ly, lx + tw + 64, ly + 84], radius=42, fill=(19, 20, 23, int(235 * a)))
                     dd.text((lx + 32, ly + 18), label, font=f_lab, fill=(255, 255, 255, int(255 * a)))
                 alpha_layer(im, draw, 1.0)

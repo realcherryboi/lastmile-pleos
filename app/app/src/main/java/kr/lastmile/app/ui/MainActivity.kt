@@ -286,7 +286,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun curbText(d: Destination) = when { !d.rulesKnown -> "목적지 부근 5분 이내 · 일반 도로 기준"; d.curbsideAllowed -> "목적지 부근 ${d.curbsideLimitMin}분까지"; else -> "목적지 부근 정차 금지" } + if (d.curb.known) " · ${d.curb.label}" else ""
+    private fun curbText(d: Destination) = when { !d.rulesKnown -> "목적지 부근 5분 이내 · 일반 도로 기준"; d.curbsideAllowed -> "목적지 부근 ${d.curbsideLimitMin}분까지 정차 가능"; else -> "목적지 부근 정차 금지" } + if (d.curb.known) " · ${d.curb.label}" else ""
     /** "목적지 지나서 20 m에서 내림 · 3회" — 승객석 문이 열렸던 자리 (기기 내 기억) */
     private fun dropText(d: Destination) = d.drop?.let { "${DropMemory.describe(d, it)}에서 내림 · ${d.dropCount}회" + if (d.dropNew) " · 방금 기억" else "" }
     private fun renderDropRow(root: View, id: Int, d: Destination) { val t = dropText(d); Motion.setVisible(root.findViewById(id), t != null, fromY = 8 * dp); if (t != null) setFact(root, id, t) }

@@ -26,6 +26,15 @@ class BriefingTest {
 
     private fun noAiTells(s: String) = aiTells.forEach { assertFalse("\"$it\" in: $s", s.contains(it)) }
 
+    /** 대표 11/15: "5분까지예요"는 무엇이 5분인지 없다 — 정차 규칙 문장은 늘 "정차할 수 있어요/없어요"로 끝난다. 1 km 에서도 규칙을 다시 말한다. */
+    @Test fun stopRuleSentencesAreComplete() {
+        val all = listOf(sodam, hospital).flatMap { d -> listOf(
+            Briefing.at3km(d, 6), Briefing.at1km(d), Briefing.stopping(d), Briefing.arrived(d, false), Briefing.answer(d, "여기 세워도 돼?")) }
+        all.forEach { assertFalse(it, Regex("분까지예요|정차 금지예요|[^ ]+, \\d+분").containsMatchIn(it)) }
+        assertEquals("1킬로 남았어요. 목적지 부근은 황색 점선으로 5분까지 정차할 수 있어요.", Briefing.at1km(hospital))
+        assertEquals("도착이에요. 여기는 5분까지 정차할 수 있어요.", Briefing.arrived(hospital, false))
+    }
+
     @Test fun demoScriptParkPurpose() {
         val brief = Briefing.at3km(sodam, 10, evSoc = 18, purpose = TripPurpose.PARK)
         assertEquals("한식당 소담까지 10분이에요. 주차는 뒤편 공영주차장이에요. 배터리 18%예요. 주차장에 충전기 있어요.", brief)
@@ -49,9 +58,9 @@ class BriefingTest {
     }
 
     @Test fun stopPurposeNoStoppingCurb() {
-        assertEquals("한식당 소담까지 12분이에요. 목적지 부근은 황색 실선, 정차 금지예요. 주차는 뒤편 공영주차장이에요.",
+        assertEquals("한식당 소담까지 12분이에요. 목적지 부근은 황색 실선이라 정차할 수 없어요. 주차는 뒤편 공영주차장이에요.",
             Briefing.at3km(sodam, 12, purpose = TripPurpose.STOP))
-        assertEquals("여기는 황색 실선, 정차 금지예요. 주차장 입구는 목적지 지나 30미터예요.", Briefing.stopping(sodam, TripPurpose.STOP))
+        assertEquals("여기는 황색 실선이라 정차할 수 없어요. 주차장 입구는 목적지 지나 30미터예요.", Briefing.stopping(sodam, TripPurpose.STOP))
         assertEquals("뒤편 공영주차장 도착이에요. 10분 300원이에요. 기다리는 분께 도착을 알렸어요.", Briefing.arrived(sodam, true, TripPurpose.STOP))
         assertEquals("지금 도착했어요. 정문 앞으로 나와 주세요.", Briefing.meetingArrived(sodam, TripPurpose.STOP))   // 주차장에 섰다
         assertEquals("승하차 끝났어요. 안전 운전하세요.", Briefing.boarded(sodam, false, TripPurpose.STOP))
@@ -59,10 +68,10 @@ class BriefingTest {
 
     @Test fun stopPurposeAllowedCurb() {
         val s = Briefing.at3km(hospital, 8, evSoc = 15, purpose = TripPurpose.STOP)
-        assertEquals("성남시립병원까지 8분이에요. 목적지 부근은 황색 점선, 5분까지예요. 길어지면 지하주차장으로 가요. " +
+        assertEquals("성남시립병원까지 8분이에요. 목적지 부근은 황색 점선으로 5분까지 정차할 수 있어요. 정차가 길어지면 지하주차장으로 이동해야 해요. " +
             "배터리 15%예요. 목적지에서 120미터 시청 공영주차장 충전소에 충전기 있어요.", s)
-        assertEquals("여기는 황색 점선, 5분까지예요. 길어지면 지하주차장으로 가요.", Briefing.stopping(hospital, TripPurpose.STOP))
-        assertEquals("도착이에요. 5분까지예요.", Briefing.arrived(hospital, false, TripPurpose.STOP))
+        assertEquals("여기는 황색 점선으로 5분까지 정차할 수 있어요. 정차가 길어지면 지하주차장으로 이동해야 해요.", Briefing.stopping(hospital, TripPurpose.STOP))
+        assertEquals("도착이에요. 여기는 5분까지 정차할 수 있어요.", Briefing.arrived(hospital, false, TripPurpose.STOP))
         assertEquals("5분 지났어요. 지하주차장으로 옮겨 주세요.", Briefing.overstay(hospital))
         assertEquals("지금 도착했어요. 정문 앞이에요.", Briefing.meetingArrived(hospital, TripPurpose.STOP))   // 만남 지점 앞에 섰다
         noAiTells(s)
@@ -71,7 +80,7 @@ class BriefingTest {
     @Test fun noChargerKnownMeansNoBatteryLine() {
         val noCharger = hospital.copy(charger = null, parkingCharger = false)
         val s = Briefing.at3km(noCharger, 6, evSoc = 18, purpose = TripPurpose.STOP)
-        assertEquals("성남시립병원까지 6분이에요. 목적지 부근은 황색 점선, 5분까지예요. 길어지면 지하주차장으로 가요.", s)
+        assertEquals("성남시립병원까지 6분이에요. 목적지 부근은 황색 점선으로 5분까지 정차할 수 있어요. 정차가 길어지면 지하주차장으로 이동해야 해요.", s)
     }
 
     @Test fun unknownRulesSayCaution() {

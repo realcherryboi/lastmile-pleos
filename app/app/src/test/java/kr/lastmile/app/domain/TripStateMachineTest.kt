@@ -37,7 +37,7 @@ class TripStateMachineTest {
         val m = drive(2600, 900, 250, 80)
         val s = speaks(m.handle(TripEvent.BrakeHeld(true)))
         assertEquals(TripState.STOPPING, m.state)
-        assertEquals("여기는 황색 실선, 정차 금지예요. 주차장 입구는 목적지 지나 30미터예요.", s.single().text)
+        assertEquals("여기는 황색 실선이라 정차할 수 없어요. 주차장 입구는 목적지 지나 30미터예요.", s.single().text)
     }
 
     @Test fun curbTimeUpSpeaksOnceOnlyWhenStoppedAtCurb() {
