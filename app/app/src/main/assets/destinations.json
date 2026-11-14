@@ -14,7 +14,7 @@
    "parkingName": "뒤편 공영주차장",
    "parkingCharger": true,
    "parkingFee": "10분 300원",
-   "parkingHint": "잠시 후 우회전하면 바로 주차장 입구예요.",
+   "parkingHint": "우회전하면 바로 주차장이에요.",
    "meetingPoint": "정문 앞",
    "qa": {
     "정문": "정문 앞은 단속 구역이에요. 주차장 입구가 정문에서 30미터 뒤예요."

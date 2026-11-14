@@ -9,7 +9,7 @@ class TripStateMachineTest {
     private val sodam = Destination(
         id = "sodam", name = "한식당 소담", category = "restaurant", latitude = 37.4, longitude = 127.1, arrivalRadiusM = 80f,
         curbsideAllowed = false, curbsideLimitMin = 0, valet = false, parkingName = "뒤편 공영주차장", parkingFee = "10분 300원",
-        parkingHint = "잠시 후 우회전하면 바로 주차장 입구예요.", meetingPoint = "정문 앞", qa = emptyMap(), curbLine = "yellow_solid",
+        parkingHint = "잠시 후 우회전하면 바로 주차장 입구예요.", meetingPoint = "정문 앞", qa = emptyMap(), curbLine = "yellow_solid", parkingDistanceM = 30,
     )
 
     private fun drive(vararg meters: Int): TripStateMachine {
@@ -37,7 +37,7 @@ class TripStateMachineTest {
         val m = drive(2600, 900, 250, 80)
         val s = speaks(m.handle(TripEvent.BrakeHeld(true)))
         assertEquals(TripState.STOPPING, m.state)
-        assertEquals("여기는 황색 실선이라 세울 수 없어요. 뒤편 공영주차장 입구로 안내할게요.", s.single().text)
+        assertEquals("여기는 황색 실선, 정차 금지예요. 주차장 입구는 목적지 지나 30미터예요.", s.single().text)
     }
 
     @Test fun curbTimeUpSpeaksOnceOnlyWhenStoppedAtCurb() {
@@ -46,7 +46,7 @@ class TripStateMachineTest {
         m.handle(TripEvent.DestinationSet(hospital)); m.handle(TripEvent.RemainDistance(2600, 260))
         m.handle(TripEvent.NaviArrived); m.handle(TripEvent.Gear(GearPosition.P))
         assertEquals(TripState.ARRIVED, m.state)
-        assertEquals("5분 지났어요. 더 기다리시려면 지하주차장으로 옮겨 주세요.", speaks(m.handle(TripEvent.CurbTimeUp)).single().text)
+        assertEquals("5분 지났어요. 지하주차장으로 옮겨 주세요.", speaks(m.handle(TripEvent.CurbTimeUp)).single().text)
         assertTrue(speaks(m.handle(TripEvent.CurbTimeUp)).isEmpty())
     }
 }
