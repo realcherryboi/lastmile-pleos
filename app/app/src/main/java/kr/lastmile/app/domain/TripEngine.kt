@@ -169,7 +169,8 @@ class TripEngine private constructor(
     private val prefs by lazy { context.getSharedPreferences("lastmile", Context.MODE_PRIVATE) }
     private val CH_GUIDANCE = "guidance"; private val NOTI_GUIDANCE = 1001
     private val NOTI_SHOW_MS = 5_000L        // 헤드업 표시 시간 (내비 TBT 패널을 가리므로 짧게)
-    private val HEADSUP_WAIT_MS = 4_000L     // 앱이 아직 앞에 있으면 내려갈 때까지 기다리는 최대 시간
+    private val HEADSUP_WAIT_MS = 4_000L
+    private val ASK_TIMEOUT_MS = 8_000L        // 물어보기 후 이 시간 안에 말이 없으면 다시 누르라고 안내     // 앱이 아직 앞에 있으면 내려갈 때까지 기다리는 최대 시간
     private val NOTI_BODY_CHARS = 70         // 헤드업 본문 2줄 분량
 
     /**
@@ -261,6 +262,23 @@ class TripEngine private constructor(
     }
 
     fun askVoice() { _ui.value = _ui.value.copy(listening = true, lastUtterance = ""); voice.listenOnce() }
+
+    /**
+     * 헤드업 카드의 "물어보기" 버튼(AskReceiver). 내비를 가리지 않도록 앱 화면은 열지 않는다.
+     * 듣는 동안 "듣고 있어요" 카드를 띄우고, 8초 안에 말이 없으면 "다시 눌러 주세요" 카드(버튼 포함)로 바꾼다.
+     */
+    fun askFromHeadsUp() = post {
+        addLog("헤드업 물어보기")
+        notifyGuidance("궁금한 걸 말씀하세요. 예) 주차 어디? · 여기 세워도 돼?", "듣고 있어요", withAsk = false, force = true)
+        askVoice()
+        main.removeCallbacks(askTimeout); main.postDelayed(askTimeout, ASK_TIMEOUT_MS)
+    }
+    private val askTimeout = Runnable {
+        if (_ui.value.listening) {
+            _ui.value = _ui.value.copy(listening = false); addLog("물어보기: 못 들음")
+            notifyGuidance("말씀을 못 들었어요. 다시 '물어보기'를 눌러 주세요.", "물어보기", force = true)
+        }
+    }
     fun cancelVoice() { _ui.value = _ui.value.copy(listening = false) }
     /** 음성 인식이 없는 환경(에뮬레이터)용 텍스트 경로 */
     fun submitUtterance(text: String) = post { onUtterance(text) }
@@ -272,6 +290,7 @@ class TripEngine private constructor(
 
     private fun onUtterance(text: String) {
         val d = machine.destination
+        main.removeCallbacks(askTimeout)
         _ui.value = _ui.value.copy(listening = false, lastUtterance = text)
         addLog("운전자: $text")
         val t = text.replace(" ", "")
@@ -287,8 +306,8 @@ class TripEngine private constructor(
                     else -> addChargerWaypoint()
                 }
             }
-            d == null -> say("먼저 목적지를 설정해 주세요.")
-            else -> say(Briefing.answer(d, text, machine.purpose))
+            d == null -> say("먼저 목적지를 설정해 주세요.", "답변")
+            else -> say(Briefing.answer(d, text, machine.purpose), "답변")
         }
     }
 
@@ -341,9 +360,9 @@ class TripEngine private constructor(
      * 단, 출발 브리핑은 "안내 시작"을 누른 직후라 내비가 앞으로 오기 전(앱이 아직 떠 있는 순간)에 나올 수 있다.
      * 그래서 앱이 떠 있으면 0.5초 간격으로 최대 4초 기다렸다가 앱이 내려가면 올리고, 끝까지 떠 있으면 버린다(11/12 촬영 5회차 실측).
      */
-    private fun notifyGuidance(text: String, headline: String, waitedMs: Long = 0L): Unit = runCatching {
-        if (kr.lastmile.app.LastMileApp.activityResumed) {
-            if (waitedMs < HEADSUP_WAIT_MS) android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ notifyGuidance(text, headline, waitedMs + 500L) }, 500L)
+    private fun notifyGuidance(text: String, headline: String, waitedMs: Long = 0L, withAsk: Boolean = true, force: Boolean = false): Unit = runCatching {
+        if (!force && kr.lastmile.app.LastMileApp.activityResumed) {
+            if (waitedMs < HEADSUP_WAIT_MS) android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ notifyGuidance(text, headline, waitedMs + 500L, withAsk) }, 500L)
             return@runCatching
         }
         val nm = context.getSystemService(android.app.NotificationManager::class.java) ?: return@runCatching
@@ -354,7 +373,15 @@ class TripEngine private constructor(
         val n = android.app.Notification.Builder(context, CH_GUIDANCE)
             .setSmallIcon(kr.lastmile.app.R.drawable.ic_flag).setContentTitle(headline.ifBlank { "라스트마일" }).setContentText(notifyBody(text))
             .setCategory(android.app.Notification.CATEGORY_NAVIGATION).setOnlyAlertOnce(false).setAutoCancel(true).setTimeoutAfter(NOTI_SHOW_MS)
-            .setContentIntent(open).build()
+            .setContentIntent(open)
+            .apply {
+                // 헤드업 카드에 "물어보기" 버튼: 누르면 앱을 열지 않고 마이크만 연다(AskReceiver). 카드가 떠 있는 5초 동안만 보인다.
+                if (withAsk && machine.destination != null) {
+                    val ask = android.app.PendingIntent.getBroadcast(context, 1, android.content.Intent(context, kr.lastmile.app.ui.AskReceiver::class.java),
+                        android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT)
+                    addAction(android.app.Notification.Action.Builder(null, "물어보기", ask).build())
+                }
+            }.build()
         nm.notify(NOTI_GUIDANCE, n)
     }.onFailure { addLog("알림 실패: ${it.message}") }.let { }
 
@@ -368,7 +395,11 @@ class TripEngine private constructor(
     }
 
     /** 소스·어댑터가 상태를 보고하는 창구 (화면 상단 상태줄 + 로그). */
-    fun status(key: String, text: String) = post { sourceStatus[key] = text; _ui.value = _ui.value.copy(sources = sourceStatus.toMap()); addLog("[$key] $text") }
+    fun status(key: String, text: String) = post {
+        sourceStatus[key] = text; _ui.value = _ui.value.copy(sources = sourceStatus.toMap()); addLog("[$key] $text")
+        // 듣는 중에 인식이 실패하면 8초를 기다리지 않고 1초 뒤 "다시 눌러 주세요" 카드로 바꾼다
+        if (key == "STT" && text.startsWith("STT 오류") && _ui.value.listening) { main.removeCallbacks(askTimeout); main.postDelayed(askTimeout, 1_000L) }
+    }
 
     private fun addLog(line: String) {
         if (BuildConfig.DEBUG) android.util.Log.d("LastMile", line)   // 디버그 빌드: logcat 에도 남긴다 (에뮬레이터 검증용)

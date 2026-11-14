@@ -42,6 +42,9 @@
             </intent-filter>
         </activity>
 
+        <!-- 헤드업 안내 카드의 "물어보기" 버튼 → 앱을 열지 않고 마이크만 연다 (앱 내부 PendingIntent 전용) -->
+        <receiver android:name=".ui.AskReceiver" android:exported="false" />
+
         <uses-library android:name="android.car" android:required="false" />
 
         <service
