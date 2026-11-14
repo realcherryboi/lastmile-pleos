@@ -64,11 +64,11 @@ object Briefing {
         if (evSoc < 0 || evSoc > LOW_SOC) return ""
         val c = d.charger
         val atParking = d.parkingName.isNotBlank() && (if (c != null) c.name == d.parkingName else d.parkingCharger)
-        return " 배터리 ${evSoc}%예요." + when {
-            atParking && c != null && c.live -> " 주차장에 빈 충전기 ${c.available}대 있어요."
-            atParking -> " 주차장에 충전기 있어요."
-            c != null -> " ${chargerLine(c)}"
-            else -> " 근처 충전기 정보는 없어요."
+        return when {
+            atParking && c != null && c.live -> " 배터리 ${evSoc}%예요. 주차장에 빈 충전기 ${c.available}대 있어요."
+            atParking -> " 배터리 ${evSoc}%예요. 주차장에 충전기 있어요."
+            c != null -> " 배터리 ${evSoc}%예요. ${chargerLine(c)}"
+            else -> ""   // 근처 충전기를 모르면 배터리 얘기는 하지 않는다 — 할 수 있는 게 없는 정보는 군더더기 (11/14 병원 촬영에서 확인)
         }
     }
 

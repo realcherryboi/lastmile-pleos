@@ -66,7 +66,7 @@ simulate
 sleep 1; shot 03_nav_driving
 
 step "1 km → 300 m (내비 남은 거리로 브리핑 → 헤드업 카드가 내비 위에 5초)"
-wait_until 1000 240; sleep 1.5; shot 04_1km
+wait_until 1000 420; sleep 1.5; shot 04_1km
 wait_until 300 120; sleep 1.5; shot 05_300m
 
 step "목적지 100 m 안에서 브레이크 3초 유지 → 정차 의도(STOPPING) 헤드업"
@@ -93,6 +93,6 @@ shot 09_card_revisit
 $ADB logcat -c
 $ADB shell input tap 2179 1212; sleep 15                      # 안내 시작 → 내비가 앞 (출발 브리핑 헤드업이 다 보일 때까지 기다린 뒤 시뮬레이션)
 simulate
-wait_until 1000 240; sleep 1.5; shot 10_1km_revisit
+wait_until 1000 420; sleep 1.5; shot 10_1km_revisit
 wait_until 300 120; sleep 1.5; shot 11_300m_revisit           # "곧 도착이에요. 지난번엔 20미터 더 가서 내리셨어요."
 echo; echo "스크린샷: $SHOT"

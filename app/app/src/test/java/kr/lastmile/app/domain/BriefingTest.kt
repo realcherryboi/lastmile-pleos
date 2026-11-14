@@ -68,6 +68,12 @@ class BriefingTest {
         noAiTells(s)
     }
 
+    @Test fun noChargerKnownMeansNoBatteryLine() {
+        val noCharger = hospital.copy(charger = null, parkingCharger = false)
+        val s = Briefing.at3km(noCharger, 6, evSoc = 18, purpose = TripPurpose.STOP)
+        assertEquals("성남시립병원까지 6분이에요. 목적지 부근은 황색 점선, 5분까지예요. 길어지면 지하주차장으로 가요.", s)
+    }
+
     @Test fun unknownRulesSayCaution() {
         val generic = sodam.copy(id = "navi", rulesKnown = false, curbLine = "")
         assertTrue(Briefing.at3km(generic, 7).contains("주정차 단속에 주의하세요."))
