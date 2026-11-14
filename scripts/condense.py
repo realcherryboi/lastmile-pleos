@@ -3,7 +3,7 @@
 
 사용: python scripts/condense.py <captioned.mp4> <logcat_epoch.txt> <rec_start_epoch> <out.mp4>
           [--shots 폴더] [--speed 8] [--start 초] [--before 3] [--after 2] [--mingap 10]
-          [--scenes scenes.txt] [--title "제목|한 줄|작은 글"] [--closing "큰 문장|줄1|줄2|줄3"]
+          [--scenes scenes.txt] [--title "제목|한 줄|작은 글"] [--closing "큰 문장|줄1|줄2|줄3"] [--cues-out times.json]
   1배속으로 남기는 구간 = 음성 자막(🔊 줄) 앞 before초 ~ 자막 끝 뒤 after초, 그리고 demo.sh 장면 캡처(--shots 폴더의 PNG mtime) 앞 4초 ~ 뒤 1초.
   그 사이가 --mingap 초보다 길 때만 --speed 배속으로 돌리고 오른쪽 위에 "▶▶ N배속" 배지를 얹는다(짧은 틈은 조작 장면이라 1배속).
   --start 앞은 버린다(초기화 조작).
@@ -59,7 +59,7 @@ def card(spec, path, big):
             d.ellipse([160, y + 14, 176, y + 30], fill=(0, 224, 116)); d.text((200, y), l, font=f2, fill=(210, 218, 226)); y += 70
     img.save(path)
 
-def situation(title, desc, path, x0=20, x1=620, y0=112):
+def situation(title, desc, path, x0=20, x1=620, y0=140):   # 위 y 64~130 은 motion.py 진행 막대 자리
     """상황 설명 카드: 화면 왼쪽 1/3(차량 클러스터 — 기어 P·문 그림은 위·아래로 남김) 위쪽에 제목 + 1~3줄 설명.
     영상만 보고도 지금 무슨 상황인지 알 수 있게 (대표 피드백 11/13)."""
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
@@ -80,13 +80,15 @@ def situation(title, desc, path, x0=20, x1=620, y0=112):
     for l in lines: d.text((x0 + pad, y), l, font=fd, fill=(200, 210, 220, 255)); y += 34
     img.save(path)
 
+SPEED_TXT = "8"
+
 def read_scenes(path, cues, shots, rec_start):
     """장면 파일 → [(원본 시각, 라벨, 상황 설명)] (시각순). 줄 형식: 기준[±초]<탭>라벨[<탭>상황 설명(| 로 줄바꿈)]"""
     out = []
     for line in open(path, encoding="utf-8"):
         line = line.rstrip("\n")
         if not line.strip() or line.startswith("#"): continue
-        cols = line.split("\t"); ref, label = cols[0], cols[1]; desc = cols[2].strip() if len(cols) > 2 else ""; off = 0.0
+        line = line.replace("{speed}", SPEED_TXT); cols = line.split("\t"); ref, label = cols[0], cols[1]; desc = cols[2].strip() if len(cols) > 2 else ""; off = 0.0
         for sgn in "+-":
             if sgn in ref[1:]:
                 i = ref.rindex(sgn)
@@ -102,6 +104,7 @@ def read_scenes(path, cues, shots, rec_start):
 def main():
     src, logcat, rec_start, out = sys.argv[1], sys.argv[2], float(sys.argv[3]), sys.argv[4]
     shots = arg("--shots", None, str); speed = arg("--speed", 8.0); start = arg("--start", 0.0)
+    global SPEED_TXT; SPEED_TXT = f"{speed:g}"; cues_out = arg("--cues-out", None, str); scene_times = []
     before = arg("--before", 3.0); after = arg("--after", 2.0); mingap = arg("--mingap", 10.0)
     scenes = arg("--scenes", None, str); title = arg("--title", TITLE_DEFAULT if "--title" in sys.argv else None, str)
     closing = arg("--closing", CLOSING_DEFAULT if "--closing" in sys.argv else None, str)
@@ -163,9 +166,15 @@ def main():
             p = os.path.join(tmp, f"chip{i}.png")
             if desc: situation(label, desc, p)          # 상황 설명이 있으면 왼쪽 카드(상태바 칩 대신)
             else: chip(label, p)
-            k = add_input(p)
-            fc.append(f"{prev}[{k}:v]overlay=0:0:enable='between(t,{t0:.2f},{t1:.2f})'[l{i}]"); prev = f"[l{i}]"
-            print(f"  라벨 {t0:6.1f}-{t1:6.1f}  {label}")
+            k = add_input(p); last = i + 1 >= len(sc)
+            # 들어올 땐 0.45초 동안 옆에서 미끄러져 들어오고(감속), 다음 라벨이 올 때 0.3초 동안 빠진다(가속)
+            dist = 700 if desc else 420
+            e_in = f"pow(1-min(1,max(0,(t-{t0 + 0.12:.2f})/0.45)),3)"; e_out = f"pow(min(1,max(0,(t-{t1:.2f})/0.3)),2)"
+            xe = f"-{dist}*{e_in}" if desc else f"{dist}*{e_in}"
+            if not last: xe += f"-{dist}*{e_out}" if desc else f"+{dist}*{e_out}"
+            t_end = t1 if last else t1 + 0.3
+            fc.append(f"{prev}[{k}:v]overlay=x='{xe}':y=0:eval=frame:enable='between(t,{t0:.2f},{t_end:.2f})'[l{i}]"); prev = f"[l{i}]"
+            print(f"  라벨 {t0:6.1f}-{t1:6.1f}  {label}"); scene_times.append((round(t0, 3), label))
         fc.append(f"{prev}null[body2]")
     else: fc.append("[body]null[body2]")
 
@@ -186,6 +195,10 @@ def main():
     else:
         fc.append("[body2]null[out]"); has_audio and fc.append("[abody]anull[aout]")
 
+    if cues_out:   # 모션그래픽(scripts/motion.py polish)이 쓸 본편 기준 시각: 카드가 있으면 그만큼 밀린다
+        import json; off = TITLE_SEC if title else 0.0
+        json.dump({"cues": [round(out_t(a) + off, 3) for a, b, _ in cues], "cue_ends": [round(out_t(b) + off, 3) for a, b, _ in cues],
+                   "scenes": [(t + off, l) for t, l in scene_times], "total": round(total + off, 3)}, open(cues_out, "w"), ensure_ascii=False, indent=1)
     cmd = ["ffmpeg", "-v", "error", "-y"] + inputs + ["-filter_complex", ";".join(fc), "-map", "[out]"] \
         + (["-map", "[aout]", "-c:a", "aac", "-b:a", "160k"] if has_audio else []) \
         + ["-c:v", "libx264", "-crf", "20", "-pix_fmt", "yuv420p", "-movflags", "+faststart", out]
