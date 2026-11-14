@@ -49,4 +49,17 @@ class TripStateMachineTest {
         assertEquals("5분 지났어요. 지하주차장으로 옮겨 주세요.", speaks(m.handle(TripEvent.CurbTimeUp)).single().text)
         assertTrue(speaks(m.handle(TripEvent.CurbTimeUp)).isEmpty())
     }
+
+    @Test fun doorEndsTripOnlyForCurbsidePurposes() {
+        fun arrive(p: TripPurpose): TripStateMachine {
+            val m = TripStateMachine(); m.purpose = p
+            m.handle(TripEvent.DestinationSet(sodam)); m.handle(TripEvent.RemainDistance(2600, 260))
+            m.handle(TripEvent.NaviArrived); m.handle(TripEvent.Gear(GearPosition.P))
+            m.handle(TripEvent.Door(true)); m.handle(TripEvent.Door(false))
+            return m
+        }
+        assertEquals(TripState.ARRIVED, arrive(TripPurpose.PARK).state)   // 주차: 문 신호를 보지 않는다 (기어 P 에서 끝)
+        assertEquals(TripState.DONE, arrive(TripPurpose.STOP).state)      // 정차·픽업: 문 열림→닫힘 = 승하차
+        assertEquals(TripState.DONE, arrive(TripPurpose.VIA).state)
+    }
 }

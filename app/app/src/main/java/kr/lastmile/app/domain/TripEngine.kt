@@ -180,6 +180,7 @@ class TripEngine private constructor(
     private fun rememberDrop() {
         val d = machine.destination ?: return
         if (machine.state != TripState.ARRIVED && machine.state != TripState.STOPPING) return
+        if (machine.purpose == TripPurpose.PARK) return   // 주차장 안에서 내린 자리는 기억하지 않는다 (목적별 분리, 11/14)
         val lat = _ui.value.hereLat; val lng = _ui.value.hereLng
         if (lat.isNaN() || lng.isNaN()) { addLog("내린 자리: 위치 없음 → 기억 안 함"); return }
         val m = dist(d, lat, lng)

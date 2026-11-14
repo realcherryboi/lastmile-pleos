@@ -51,10 +51,12 @@ $ADB shell am force-stop $APP; sleep 1
 $ADB logcat -c
 $ADB shell am start -n $APP/.ui.MainActivity --ez clear_drops true >/dev/null; sleep 8   # 디버그 빌드: 내린 자리 기억 초기화
 
-step "목적지 선택 (한식당 소담) → 목적 칩(정차 금지라 '도착 후 주차'가 기본, 정차·픽업으로 바꿨다 되돌림) → 안내 시작"
-$ADB shell input tap 1364 450; sleep 3                                   # 목록 첫 행 → 상세 카드
+# 데모 목적지 = 성남시립병원(목적지 부근 황색 점선, 5분 정차) · 목적 '정차·픽업' (대표 결정 11/14: 목적별 분리 —
+# 승객석 문 = 승하차 확정과 '내린 자리 기억'은 길가에 잠깐 세우는 정차·픽업·경유에서만, 주차 목적은 기어 P 에서 끝).
+step "목적지 선택 (성남시립병원) → 목적 칩(황색 점선이라 '정차·픽업'이 기본, 도착 후 주차로 바꿨다 되돌림) → 안내 시작"
+$ADB shell input tap 1364 584; sleep 3                                   # 목록 둘째 행 → 상세 카드
 shot 01_card
-$ADB shell input tap 1978 797; sleep 2.5; $ADB shell input tap 2178 797; sleep 2   # 칩: 정차·픽업 → 도착 후 주차 (카드 문구가 바뀜)
+$ADB shell input tap 2178 830; sleep 2.5; $ADB shell input tap 1986 830; sleep 2   # 칩: 도착 후 주차 → 정차·픽업 (카드 문구가 바뀜)
 $ADB shell input tap 2179 1212; sleep 9                                   # 안내 시작 → 내비가 앞으로(전체 창, 경로 표시) + 3 km 브리핑
 shot 02_nav_start
 sleep 5   # 출발 헤드업(5초)이 다 보일 때까지 — 시뮬레이션 패널을 여는 길게 누르기가 헤드업을 닫아 버린다(11/12 6회차 실측)
@@ -64,7 +66,7 @@ simulate
 sleep 1; shot 03_nav_driving
 
 step "1 km → 300 m (내비 남은 거리로 브리핑 → 헤드업 카드가 내비 위에 5초)"
-wait_until 1000 150; sleep 1.5; shot 04_1km
+wait_until 1000 240; sleep 1.5; shot 04_1km
 wait_until 300 120; sleep 1.5; shot 05_300m
 
 step "목적지 100 m 안에서 브레이크 3초 유지 → 정차 의도(STOPPING) 헤드업"
@@ -73,10 +75,10 @@ wait_until 100 60
 curl -s -X PUT "$VC/vehicle/controls?speed=0&accelerator=0&brake=60&steering=0" >/dev/null; sleep 4.5; shot 06_stopping
 curl -s -X PUT "$VC/vehicle/controls?speed=0&accelerator=0&brake=0&steering=0" >/dev/null
 
-step "내비 도착 → 기어 P → ARRIVED (앱이 스스로 전체 창으로 앞에 나옴 + 주차장·도착 구역 지도)"
+step "내비 도착 → 기어 P → ARRIVED (앱이 스스로 전체 창으로 앞에 나옴 + 5분 정차 타이머·도착 구역 지도)"
 wait_until 0 90; sleep 3
 curl -s -X PUT "$VC/vehicle/gear?gear=Park" >/dev/null; sleep 6
-$ADB emu geo fix 127.10404 37.39967 >/dev/null; sleep 3   # 내린 자리 기억용 좌표 (정문 22 m 지난 자리)
+$ADB emu geo fix 127.12933 37.43127 >/dev/null; sleep 3   # 내린 자리 기억용 좌표 (병원 목적지에서 도로 방위 70° 로 22 m 지난 자리)
 shot 07_arrived
 step "조수석 문 열림 → 닫힘 → 승하차 확인(DONE) + 내린 자리 기억"
 curl -s -X PUT "$VC/vehicle/body?door_fr=true" >/dev/null; sleep 3; curl -s -X PUT "$VC/vehicle/body?door_fr=false" >/dev/null; sleep 6
@@ -86,11 +88,11 @@ step "두 번째 방문: 완료 → 같은 목적지 다시 선택 → 카드에
 curl -s -X PUT "$VC/vehicle/gear?gear=Drive" >/dev/null
 $ADB shell input tap 1693 1212; sleep 2.5                     # 완료 (앱이 이미 전체 창으로 앞에 있음)
 $ADB emu geo fix 127.0947 37.4127 >/dev/null; sleep 1         # 출발 위치로 돌려놓는다
-$ADB shell input tap 1364 450; sleep 4                        # 목록 첫 행 → 상세 카드(지난번 행 + 지도 핀)
+$ADB shell input tap 1364 584; sleep 4                        # 목록 둘째 행(병원) → 상세 카드(지난번 행 + 지도 핀)
 shot 09_card_revisit
 $ADB logcat -c
 $ADB shell input tap 2179 1212; sleep 15                      # 안내 시작 → 내비가 앞 (출발 브리핑 헤드업이 다 보일 때까지 기다린 뒤 시뮬레이션)
 simulate
-wait_until 1000 150; sleep 1.5; shot 10_1km_revisit
-wait_until 300 120; sleep 1.5; shot 11_300m_revisit           # "… 지난번엔 목적지 지나서 20미터에서 내리셨어요."
+wait_until 1000 240; sleep 1.5; shot 10_1km_revisit
+wait_until 300 120; sleep 1.5; shot 11_300m_revisit           # "곧 도착이에요. 지난번엔 20미터 더 가서 내리셨어요."
 echo; echo "스크린샷: $SHOT"

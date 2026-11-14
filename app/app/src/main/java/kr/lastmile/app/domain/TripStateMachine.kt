@@ -123,7 +123,9 @@ class TripStateMachine {
             is TripEvent.CurbTimeUp -> if (d != null && state == TripState.ARRIVED && purpose != TripPurpose.PARK && d.curbsideAllowed && !overstaySaid) {
                 overstaySaid = true; out += TripAction.Speak(Briefing.overstay(d), "정차 시간 초과")
             }
-            is TripEvent.Door -> if (d != null && state == TripState.ARRIVED) {
+            // 승객석 문 = 승하차 확정은 길가에 잠깐 세우는 목적(정차·픽업, 경유)에서만. 주차 목적은 기어 P 에서 끝나고(시동을 끄면 화면도 꺼진다)
+            // 주차장 안에서 문이 열린 자리는 다음 방문에 쓸모가 없다 (대표 결정 11/14).
+            is TripEvent.Door -> if (d != null && state == TripState.ARRIVED && purpose != TripPurpose.PARK) {
                 if (event.open) doorOpened = true
                 else if (doorOpened) { transition(TripState.DONE, out); out += TripAction.Speak(Briefing.boarded(d, meetingMode, purpose), "승하차 확인") }
             }

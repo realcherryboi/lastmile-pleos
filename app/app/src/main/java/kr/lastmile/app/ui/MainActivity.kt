@@ -545,8 +545,16 @@ class MainActivity : AppCompatActivity() {
         ar.findViewById<TextView>(R.id.arrivedTitle).text = getString(if (boarded) R.string.boarded_title else R.string.arrived_title)
         ar.findViewById<TextView>(R.id.arrivedDestination).text = if (boarded) getString(when (s.purpose) { TripPurpose.PARK -> R.string.boarded_sub_park; TripPurpose.VIA -> R.string.boarded_sub_via; else -> R.string.boarded_sub }) else d?.let { listOf(it.name, it.address).filter { f -> f.isNotBlank() }.joinToString(" · ") } ?: ""
         // 승하차 카드: 기다리는 중 → 끝(내린 자리 기억 안내)
-        ar.findViewById<TextView>(R.id.boardTitle).text = getString(if (boarded) R.string.boarding_done_title else R.string.boarding_wait_title)
-        ar.findViewById<TextView>(R.id.boardHint).text = if (boarded) {
+        val parkArrival = s.purpose == TripPurpose.PARK
+        ar.findViewById<TextView>(R.id.boardTitle).text = when {
+            parkArrival -> getString(R.string.walk_to_destination_title)   // 주차 목적: 승하차 대신 목적지까지 걸어가는 거리 (목적별 분리, 11/14)
+            boarded -> getString(R.string.boarding_done_title)
+            else -> getString(R.string.boarding_wait_title)
+        }
+        ar.findViewById<TextView>(R.id.boardHint).text = if (parkArrival) {
+            val m = d?.let { Briefing.parkingDistance(it) } ?: -1
+            if (m > 0) getString(R.string.walk_to_destination_hint, m) else getString(R.string.walk_to_destination_hint_unknown)
+        } else if (boarded) {
             val where = d?.takeIf { it.dropNew }?.drop?.let { "내린 자리: ${DropMemory.describe(d, it)}. " } ?: ""
             where + getString(R.string.boarding_done_hint)
         } else getString(R.string.boarding_wait_hint)
