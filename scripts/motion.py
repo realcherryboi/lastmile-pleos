@@ -98,7 +98,8 @@ def opening(out, sec=8.0):
             if la > 0:
                 s = "마지막 300 m"; tw = dd.textlength(s, font=f_chip)
                 dd.text(((xp + x1) / 2 - tw / 2 + 15, y + 34 + dy + 10 * (1 - la)), s, font=f_chip, fill=GREEN + (int(255 * la),))
-            for k, s in enumerate(["세워도 되나?", "어디에 세우지?", "정말 내렸나?"]):
+            # 기획서 2장 운전자 질문 그대로 (대표 11/15: "정말 내렸나?"는 말이 안 된다)
+            for k, s in enumerate(["세워도 되나?", "몇 분까지?", "안 되면 어디에?"]):
                 ca = ease_out(prog(t, 3.5 + 0.28 * k, 3.95 + 0.28 * k))
                 if ca <= 0: continue
                 tw = dd.textlength(s, font=f_chip); cx = (xp + x1) / 2 + 15 + (k - 1) * 290; cy = y + 130 + dy + 18 * (1 - ca)
@@ -191,7 +192,8 @@ def appeal(out, sec=17.0):
 def closing(out, sec=6.0):
     p = writer(out, sec)
     f1, f2, f3 = font(64, True), font(38), font(30)
-    lines = ["세워도 되는 곳인지 · 어디에 · 정말 멈춰 내렸는지를 차량 신호로 판단",
+    lines = ["세워도 되는지 · 몇 분까지인지 · 안 되면 어디에 세울지 미리 알려 준다",
+             "정차 · 도착 · 승하차는 브레이크 · 기어 P · 승객석 문 신호로 판단",
              "주행 중엔 내비 위 한 줄 안내와 '물어보기' 버튼 하나",
              "길가에 내린 자리를 기억해 다음 방문 때 먼저 알려 준다"]
     n = int(sec * FPS)
@@ -203,11 +205,11 @@ def closing(out, sec=6.0):
             a = ease_out(prog(t, 0.1, 0.7))
             dd.text((200, 300 + 20 * (1 - a)), "내비는 도착까지, 라스트마일은 세우고 내리기까지.", font=f1, fill=INK + (int(255 * a),))
             for k, s in enumerate(lines):
-                b = ease_out(prog(t, 0.8 + 0.35 * k, 1.3 + 0.35 * k)); yy = 440 + 78 * k + 16 * (1 - b)
+                b = ease_out(prog(t, 0.8 + 0.3 * k, 1.3 + 0.3 * k)); yy = 430 + 74 * k + 16 * (1 - b)
                 dd.ellipse([200, yy + 14, 222, yy + 36], fill=GREEN + (int(255 * b),))
                 dd.text((246, yy), s, font=f2, fill=(68, 70, 78, int(255 * b)))
             c = ease_out(prog(t, 2.4, 3.0))
-            dd.text((200, 760), "라스트마일 · Pleos Connect 앱", font=f3, fill=SUB + (int(255 * c),))
+            dd.text((200, 820), "라스트마일 · Pleos Connect 앱", font=f3, fill=SUB + (int(255 * c),))
             dd.text((200, 960), MUSIC_CREDIT, font=font(22), fill=SUB + (int(200 * c),))
         alpha_layer(im, draw, fade)
         p.stdin.write(im.convert("RGB").tobytes())
