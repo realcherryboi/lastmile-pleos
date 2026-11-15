@@ -4,6 +4,7 @@
 Pillow 로 프레임을 그리고 ffmpeg 파이프로 인코딩한다. 새 프로그램 설치 없이 돈다.
   python scripts/motion.py opening <out.mp4>                      # 오프닝 8초 (내비가 끝나는 곳 → 마지막 300 m → 앱 이름)
   python scripts/motion.py appeal <out.mp4>                       # 오프닝 뒤 17초 '왜 라스트마일인가' (단속 연 221만 건 → 기획서 F1~F5)
+  python scripts/motion.py concept_meet <out.mp4>                 # 시연 뒤 12초 '말로 마중 설정 → 링크로 차 위치·마중 위치' 콘셉트 (구현 예정 표시)
   python scripts/motion.py closing <out.mp4>                      # 마무리 6초 (핵심 세 줄)
   python scripts/motion.py polish <body.mp4> <out.mp4> <plan.json>  # 본편 전체: 강조 확대 여러 곳 + 왼쪽 아래 진행 막대(3 km·1 km·300 m·도착·승하차)
         # plan.json 은 condense.py --cues-out 시각으로 만든다 (scripts/demo_motion_plan.py)
@@ -188,6 +189,115 @@ def appeal(out, sec=17.0):
     p.stdin.close(); p.wait()
 
 
+# ---------------------------------------------------------------- concept: 음성으로 마중 설정 (구현 예정)
+def concept_meet(out, sec=12.0):
+    """대표 11/15: "브리핑 중 '○○에게 마중 설정해 줘' → 카카오톡으로 링크 전송 확인받고 보내기까지 구현할 생각".
+    아직 앱에 없는 기능이라 '구현 예정 · 콘셉트' 표시를 늘 띄운다. 카카오 로고·화면은 흉내 내지 않는다."""
+    p = writer(out, sec)
+    f_tag, f_h, f_v, f_ct, f_cb, f_btn, f_s, f_ph = font(24, True), font(44, True), font(36, True), font(30, True), font(26), font(28, True), font(24), font(24)
+    n = int(sec * FPS)
+    for i in range(n):
+        t = i / FPS
+        im = Image.new("RGBA", (W, H), BG + (255,))
+        fade = ease_out(prog(t, 0.0, 0.5)) * (1 - ease_in_out(prog(t, sec - 0.5, sec)))
+        def draw(dd):
+            # 표시: 늘 보인다
+            tag = "다음 단계 · 2차 발표 전 구현 예정 (콘셉트 화면)"; tw = dd.textlength(tag, font=f_tag)
+            dd.rounded_rectangle([W - tw - 120, 40, W - 60, 92], radius=26, fill=(255, 244, 214, 255))
+            dd.text((W - tw - 90, 52), tag, font=f_tag, fill=(150, 100, 0, 255))
+            dd.text((100, 60), "F4 마중 · 말로 설정하기", font=f_h, fill=INK + (255,))
+            # 왼쪽: 차량 화면(내비 느낌)
+            X0, Y0, X1, Y1 = 100, 150, 1180, 960
+            dd.rounded_rectangle([X0, Y0, X1, Y1], radius=28, fill=(233, 238, 242, 255))
+            dd.line([(360, Y1 - 50), (540, 650), (720, 480), (1000, Y0 + 80)], fill=(190, 214, 240, 255), width=90)
+            dd.line([(360, Y1 - 50), (540, 650), (720, 480), (1000, Y0 + 80)], fill=BLUE + (255,), width=14)
+            ls = "차량 화면 · 브리핑 중 (3 km 전)"; dd.text((X1 - 30 - dd.textlength(ls, font=f_s), Y1 - 50), ls, font=f_s, fill=SUB + (255,))
+            # 운전자 말풍선
+            v = ease_out(prog(t, 0.6, 1.1))
+            if v > 0:
+                s = "“엄마한테 마중 설정해 줘”"; sw = dd.textlength(s, font=f_v)
+                bx, by = X0 + 60, Y1 - 190 + 16 * (1 - v)
+                dd.rounded_rectangle([bx, by, bx + sw + 130, by + 84], radius=42, fill=(19, 20, 23, int(235 * v)))
+                dd.ellipse([bx + 26, by + 22, bx + 66, by + 62], fill=GREEN + (int(255 * v),))
+                dd.text((bx + 86, by + 20), s, font=f_v, fill=(255, 255, 255, int(255 * v)))
+            # 헤드업 카드: 확인 → 보냈어요
+            c = ease_out(prog(t, 1.9, 2.4))
+            if c > 0:
+                cx, cy, cw = X0 + 60, Y0 + 40 - 20 * (1 - c), 640
+                sent = t >= 5.0
+                dd.rounded_rectangle([cx, cy, cx + cw, cy + 250], radius=10, fill=(255, 255, 255, int(255 * c)))
+                A = int(255 * c)
+                dd.text((cx + 34, cy + 28), "마중 링크 보냈어요" if sent else "마중 · 엄마", font=f_ct, fill=INK + (A,))
+                dd.text((cx + 34, cy + 78), "엄마 · 카카오톡 · 성남시립병원 본관 정문 앞" if sent else "엄마에게 마중 링크를 카카오톡으로 보낼까요?", font=f_cb, fill=(68, 70, 78, A))
+                if not sent:
+                    bw = (cw - 34 * 2 - 16) / 2
+                    dd.rectangle([cx + 34, cy + 150, cx + 34 + bw, cy + 220], fill=BLUE + (A,))
+                    dd.rectangle([cx + 34 + bw + 16, cy + 150, cx + cw - 34, cy + 220], fill=INK + (A,))
+                    for k, (lab, x) in enumerate([("보내기", cx + 34 + bw / 2), ("취소", cx + 34 + bw * 1.5 + 16)]):
+                        lw = dd.textlength(lab, font=f_btn); dd.text((x - lw / 2, cy + 168), lab, font=f_btn, fill=(255, 255, 255, A))
+                    # 손가락 탭: 보내기
+                    tp = prog(t, 4.2, 4.9)
+                    if 0 < tp < 1:
+                        r = 20 + 40 * ease_out(tp); x, y = cx + 34 + bw / 2, cy + 185
+                        dd.ellipse([x - r, y - r, x + r, y + r], outline=(255, 255, 255, int(255 * (1 - tp))), width=6)
+                else:
+                    dd.text((cx + 34, cy + 160), "🔊 “엄마에게 마중 링크를 보냈어요.”".replace("🔊 ", ""), font=f_cb, fill=GREEN + (A,))
+            # 오른쪽: 기다리는 사람의 휴대폰 — 링크를 열면 차가 오는 경로·실시간 위치·마중 나갈 곳 (대표 11/15: "카카오택시 공유처럼")
+            ph = ease_out(prog(t, 5.3, 5.9))
+            if ph > 0:
+                PX, PY, PW, PH = 1290, 150 + 30 * (1 - ph), 520, 820; A = int(255 * ph)
+                dd.rounded_rectangle([PX, PY, PX + PW, PY + PH], radius=48, fill=(19, 20, 23, A))
+                dd.rounded_rectangle([PX + 16, PY + 16, PX + PW - 16, PY + PH - 16], radius=36, fill=(245, 246, 248, A))
+                chat = 1 - ease_in_out(prog(t, 6.9, 7.3)); page = ease_out(prog(t, 7.1, 7.5))
+                if chat > 0:
+                    a = int(255 * ph * chat)
+                    dd.text((PX + 50, PY + 50), "엄마의 휴대폰 · 카카오톡", font=f_ph, fill=SUB + (a,))
+                    dd.rounded_rectangle([PX + 44, PY + 110, PX + PW - 60, PY + 250], radius=22, fill=(255, 255, 255, a), outline=LINE + (a,), width=2)
+                    dd.text((PX + 68, PY + 126), "라스트마일 마중", font=font(24, True), fill=INK + (a,))
+                    dd.text((PX + 68, PY + 164), "본관 정문 앞 · 6분 후 도착", font=f_ph, fill=(68, 70, 78, a))
+                    dd.text((PX + 68, PY + 202), "링크 열기 →", font=font(24, True), fill=BLUE + (a,))
+                    tp = prog(t, 6.4, 6.9)
+                    if 0 < tp < 1:
+                        r = 16 + 30 * ease_out(tp); x, y = PX + 140, PY + 214
+                        dd.ellipse([x - r, y - r, x + r, y + r], outline=BLUE + (int(255 * (1 - tp)),), width=5)
+                if page > 0:
+                    a = int(255 * ph * page)
+                    arrive = 10.4
+                    left = max(1, 6 - int(5 * prog(t, 7.4, arrive)))
+                    dd.text((PX + 50, PY + 48), "마중 · 성남시립병원", font=font(28, True), fill=INK + (a,))
+                    dd.text((PX + 50, PY + 92), "지금 도착했어요" if t >= arrive else f"{left}분 후 도착", font=font(26, True), fill=(GREEN if t >= arrive else BLUE) + (a,))
+                    # 지도: 경로선 + 다가오는 차 + 마중 위치 핀
+                    MX0, MY0, MX1, MY1 = PX + 36, PY + 150, PX + PW - 36, PY + 640
+                    dd.rounded_rectangle([MX0, MY0, MX1, MY1], radius=24, fill=(229, 234, 239, a))
+                    for gx in range(int(MX0) + 60, int(MX1), 110): dd.line([(gx, MY0), (gx, MY1)], fill=(244, 246, 249, a), width=10)
+                    for gy in range(int(MY0) + 80, int(MY1), 120): dd.line([(MX0, gy), (MX1, gy)], fill=(244, 246, 249, a), width=10)
+                    route = [(MX0 + 60, MY1 - 40), (MX0 + 60, MY0 + 330), (MX0 + 280, MY0 + 330), (MX0 + 280, MY0 + 150), (MX0 + 360, MY0 + 110)]
+                    dd.line(route, fill=BLUE + (a,), width=10, joint="curve")
+                    # 차 위치: 경로를 따라 시간 비율만큼
+                    seg = [((x1 - x0) ** 2 + (y1 - y0) ** 2) ** 0.5 for (x0, y0), (x1, y1) in zip(route, route[1:])]
+                    d = sum(seg) * ease_in_out(prog(t, 7.4, arrive)); cx2, cy2 = route[-1]
+                    for (x0, y0), (x1, y1), L in zip(route, route[1:], seg):
+                        if d <= L: cx2, cy2 = x0 + (x1 - x0) * d / L, y0 + (y1 - y0) * d / L; break
+                        d -= L
+                    px_, py_ = route[-1]
+                    dd.ellipse([px_ - 18, py_ - 18, px_ + 18, py_ + 18], fill=GREEN + (a,))
+                    dd.ellipse([px_ - 7, py_ - 7, px_ + 7, py_ + 7], fill=(255, 255, 255, a))
+                    lab = "여기서 기다리세요"; lw = dd.textlength(lab, font=font(22, True))
+                    dd.rounded_rectangle([px_ - lw - 50, py_ - 70, px_ - 10, py_ - 26], radius=22, fill=(19, 20, 23, a))
+                    dd.text((px_ - lw - 30, py_ - 63), lab, font=font(22, True), fill=(255, 255, 255, a))
+                    dd.ellipse([cx2 - 20, cy2 - 20, cx2 + 20, cy2 + 20], fill=(255, 255, 255, a), outline=BLUE + (a,), width=6)
+                    dd.text((PX + 50, MY1 + 24), "본관 정문 앞 승하차 구역", font=font(24, True), fill=INK + (a,))
+                    dd.text((PX + 50, MY1 + 62), "차의 실시간 위치 · 오는 경로", font=f_ph, fill=SUB + (a,))
+                    if t >= arrive:
+                        b = ease_out(prog(t, arrive, arrive + 0.4))
+                        s2 = "차가 멈춘 순간 알림 · 기어 P로 확정"; sw = dd.textlength(s2, font=font(22, True))
+                        dd.rounded_rectangle([PX + 50, MY1 + 104, PX + 50 + sw + 36, MY1 + 146], radius=21, fill=GREEN + (int(a * b),))
+                        dd.text((PX + 68, MY1 + 111), s2, font=font(22, True), fill=(255, 255, 255, int(a * b)))
+        alpha_layer(im, draw, fade)
+        p.stdin.write(im.convert("RGB").tobytes())
+    p.stdin.close(); p.wait()
+
+
 # ---------------------------------------------------------------- closing
 def closing(out, sec=6.0):
     p = writer(out, sec)
@@ -340,6 +450,7 @@ if __name__ == "__main__":
     if cmd == "opening": opening(sys.argv[2])
     elif cmd == "closing": closing(sys.argv[2])
     elif cmd == "appeal": appeal(sys.argv[2])
+    elif cmd == "concept_meet": concept_meet(sys.argv[2])
     elif cmd == "polish":
         import json; polish(sys.argv[2], sys.argv[3], json.load(open(sys.argv[4], encoding="utf-8")))
     elif cmd == "highlight":
