@@ -11,7 +11,7 @@ $ADB logcat -c
 $ADB logcat -v epoch -s LastMile:D > "$OUT/logcat_epoch.txt" & LC=$!
 sleep 1
 python3 -c 'import time;print(time.time())' > "$OUT/rec_start.txt"   # macOS date 는 %N 이 없다
-$ADB shell screenrecord --time-limit 0 --bit-rate 20M /sdcard/lastmile_raw.mp4 & REC=$!   # 기본 제한 180초라 0 필수
+$ADB shell screenrecord --time-limit 0 --size 1920x1080 --bit-rate 8M /sdcard/lastmile_raw.mp4 & REC=$!   # 기본 제한 180초라 0 필수. 2560×1440·20M 은 에뮬레이터가 프레임을 놓쳐 지도가 버벅였다(11/15) → 1920×1080·8M
 sleep 2
 SHOT="$OUT/shots" bash scripts/demo.sh > "$OUT/demo.log" 2>&1
 echo "demo exit $?" >> "$OUT/demo.log"

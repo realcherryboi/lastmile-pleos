@@ -3,6 +3,7 @@
 
 Pillow 로 프레임을 그리고 ffmpeg 파이프로 인코딩한다. 새 프로그램 설치 없이 돈다.
   python scripts/motion.py opening <out.mp4>                      # 오프닝 8초 (내비가 끝나는 곳 → 마지막 300 m → 앱 이름)
+  python scripts/motion.py appeal <out.mp4>                       # 오프닝 뒤 13초 '왜 라스트마일인가' (단속 연 221만 건 → 다른 점 넷)
   python scripts/motion.py closing <out.mp4>                      # 마무리 6초 (핵심 세 줄)
   python scripts/motion.py polish <body.mp4> <out.mp4> <plan.json>  # 본편 전체: 강조 확대 여러 곳 + 왼쪽 아래 진행 막대(3 km·1 km·300 m·도착·승하차)
         # plan.json 은 condense.py --cues-out 시각으로 만든다 (scripts/demo_motion_plan.py)
@@ -123,6 +124,70 @@ def opening(out, sec=8.0):
     p.stdin.close(); p.wait()
 
 
+MUSIC_CREDIT = "배경음악 Corporate Motivational Ambient · AShamaluevMusic"   # 대표가 고른 곡(11/15), 출처 표기
+
+
+# ---------------------------------------------------------------- appeal
+APPEAL = [
+    ("세우기 전에 안다", "목적지 부근 차선 규칙을 3 km 전부터 · 황색 점선은 5분까지, 실선은 정차할 수 없다"),
+    ("폰이 모르는 걸 차가 안다", "브레이크 · 기어 P · 승객석 문 신호로 ‘멈췄다, 내렸다’를 확정"),
+    ("주행 중 터치 0회", "내비 위 한 줄 안내 카드 · 묻고 싶으면 ‘물어보기’ 한 번"),
+    ("갈수록 내 차에 맞춰진다", "길가에 내린 자리를 기억해 다음 방문 때 먼저 알려 준다"),
+]
+
+
+def appeal(out, sec=13.0):
+    """오프닝 뒤 '왜 라스트마일인가' (11/15 대표: "처음에 왜 매력적인지 어필하는 부분"). 숫자는 기획서에 출처가 있는 것만."""
+    p = writer(out, sec)
+    f_big, f_cap, f_src = font(150, True), font(40, True), font(26)
+    f_h, f_t, f_d, f_n = font(52, True), font(40, True), font(28), font(30, True)
+    n = int(sec * FPS)
+    for i in range(n):
+        t = i / FPS
+        im = Image.new("RGBA", (W, H), BG + (255,))
+        # 1막 (0~3.4초): 문제의 크기
+        a1 = ease_out(prog(t, 0.1, 0.6)) * (1 - ease_in_out(prog(t, 3.0, 3.5)))
+        def hook(dd):
+            cnt = int(221 * ease_out(prog(t, 0.2, 1.4)))
+            s = f"{cnt}만 건"; tw = dd.textlength(s, font=f_big)
+            dd.text((W / 2 - tw / 2, 400 - 30 * (1 - a1)), s, font=f_big, fill=RED + (255,))
+            s2 = "서울시 불법 주정차 단속, 한 해 (2024년)"; tw2 = dd.textlength(s2, font=f_cap)
+            dd.text((W / 2 - tw2 / 2, 600), s2, font=f_cap, fill=INK + (255,))
+            b = ease_out(prog(t, 1.2, 1.7))
+            s3 = "목적지 앞에서 ‘세워도 되나?’를 모른 채 세운 대가 · 황색 실선 앞 정차 과태료는 승용차 4만 원"; tw3 = dd.textlength(s3, font=f_src)
+            dd.text((W / 2 - tw3 / 2, 680 + 10 * (1 - b)), s3, font=f_src, fill=SUB + (int(255 * b),))
+        alpha_layer(im, hook, a1)
+        # 2막 (3.3초~): 다른 점 넷
+        a2 = ease_out(prog(t, 3.3, 3.8)) * (1 - ease_in_out(prog(t, sec - 0.6, sec)))
+        def cards(dd):
+            hs = "라스트마일이 다른 점"; tw = dd.textlength(hs, font=f_h)
+            dd.text((W / 2 - tw / 2, 150 - 16 * (1 - a2)), hs, font=f_h, fill=INK + (255,))
+            cw, ch, gx, gy = 780, 250, 40, 36; x0 = (W - 2 * cw - gx) / 2; y0 = 280
+            for k, (title, desc) in enumerate(APPEAL):
+                c = ease_out(prog(t, 3.7 + 0.45 * k, 4.3 + 0.45 * k))
+                if c <= 0: continue
+                cx = x0 + (k % 2) * (cw + gx); cy = y0 + (k // 2) * (ch + gy) + 24 * (1 - c); A = int(255 * c)
+                dd.rounded_rectangle([cx, cy, cx + cw, cy + ch], radius=28, fill=(255, 255, 255, A), outline=LINE + (A,), width=2)
+                col = GREEN if k % 2 == 0 else BLUE
+                dd.ellipse([cx + 40, cy + 44, cx + 96, cy + 100], fill=col + (A,))
+                ns = str(k + 1); nw = dd.textlength(ns, font=f_n); dd.text((cx + 68 - nw / 2, cy + 52), ns, font=f_n, fill=(255, 255, 255, A))
+                dd.text((cx + 124, cy + 46), title, font=f_t, fill=INK + (A,))
+                # 설명은 카드 폭에 맞춰 두 줄까지
+                words, lines, cur = desc.split(" "), [], ""
+                for w in words:
+                    trial = (cur + " " + w).strip()
+                    if dd.textlength(trial, font=f_d) <= cw - 164: cur = trial
+                    else: lines.append(cur); cur = w
+                lines.append(cur)
+                for li, l in enumerate(lines[:2]): dd.text((cx + 124, cy + 120 + 42 * li), l, font=f_d, fill=(68, 70, 78, A))
+            e = ease_out(prog(t, 9.5, 10.1))
+            es = "지금부터 Pleos Connect 에뮬레이터 실제 구동 화면"; ew = dd.textlength(es, font=f_src)
+            dd.text((W / 2 - ew / 2, 900 + 10 * (1 - e)), es, font=f_src, fill=SUB + (int(255 * e),))
+        alpha_layer(im, cards, a2)
+        p.stdin.write(im.convert("RGB").tobytes())
+    p.stdin.close(); p.wait()
+
+
 # ---------------------------------------------------------------- closing
 def closing(out, sec=6.0):
     p = writer(out, sec)
@@ -144,6 +209,7 @@ def closing(out, sec=6.0):
                 dd.text((246, yy), s, font=f2, fill=(68, 70, 78, int(255 * b)))
             c = ease_out(prog(t, 2.4, 3.0))
             dd.text((200, 760), "라스트마일 · Pleos Connect 앱", font=f3, fill=SUB + (int(255 * c),))
+            dd.text((200, 960), MUSIC_CREDIT, font=font(22), fill=SUB + (int(200 * c),))
         alpha_layer(im, draw, fade)
         p.stdin.write(im.convert("RGB").tobytes())
     p.stdin.close(); p.wait()
@@ -272,6 +338,7 @@ if __name__ == "__main__":
     cmd = sys.argv[1]
     if cmd == "opening": opening(sys.argv[2])
     elif cmd == "closing": closing(sys.argv[2])
+    elif cmd == "appeal": appeal(sys.argv[2])
     elif cmd == "polish":
         import json; polish(sys.argv[2], sys.argv[3], json.load(open(sys.argv[4], encoding="utf-8")))
     elif cmd == "highlight":
