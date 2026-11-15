@@ -19,7 +19,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 BG = (18, 22, 28)
 TITLE_DEFAULT = "라스트마일|내비가 끝나는 마지막 300 m를 차가 이어받는다|Pleos Connect 에뮬레이터 실제 구동 화면 · 내장 내비 주행 시뮬레이션 · 음성은 앱이 말한 문장을 합성"
-CLOSING_DEFAULT = "내비는 도착까지, 라스트마일은 세우고 내리기까지.|세워도 되는 곳인지 · 어디에 · 정말 멈춰 내렸는지를 차량 신호로 판단|주행 중 터치 0회 · 내비 위 한 줄 헤드업으로만 말한다|내린 자리를 기억해 다음 방문에 제안"
+CLOSING_DEFAULT = "내비는 도착까지, 라스트마일은 세우고 내리기까지.|세워도 되는 곳인지 · 어디에 · 정말 멈춰 내렸는지를 차량 신호로 판단|주행 중 화면 전환 0회 · 내비 위 한 줄 헤드업으로만 말한다|내린 자리를 기억해 다음 방문에 제안"
 TITLE_SEC, CLOSING_SEC, FADE = 4.0, 6.0, 0.5
 
 def arg(name, default, cast=float):
