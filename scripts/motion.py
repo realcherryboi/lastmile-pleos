@@ -3,7 +3,7 @@
 
 Pillow 로 프레임을 그리고 ffmpeg 파이프로 인코딩한다. 새 프로그램 설치 없이 돈다.
   python scripts/motion.py opening <out.mp4>                      # 오프닝 8초 (내비가 끝나는 곳 → 마지막 300 m → 앱 이름)
-  python scripts/motion.py appeal <out.mp4>                       # 오프닝 뒤 13초 '왜 라스트마일인가' (단속 연 221만 건 → 다른 점 넷)
+  python scripts/motion.py appeal <out.mp4>                       # 오프닝 뒤 17초 '왜 라스트마일인가' (단속 연 221만 건 → 기획서 F1~F5)
   python scripts/motion.py closing <out.mp4>                      # 마무리 6초 (핵심 세 줄)
   python scripts/motion.py polish <body.mp4> <out.mp4> <plan.json>  # 본편 전체: 강조 확대 여러 곳 + 왼쪽 아래 진행 막대(3 km·1 km·300 m·도착·승하차)
         # plan.json 은 condense.py --cues-out 시각으로 만든다 (scripts/demo_motion_plan.py)
@@ -128,19 +128,21 @@ MUSIC_CREDIT = "배경음악 Corporate Motivational Ambient · AShamaluevMusic" 
 
 
 # ---------------------------------------------------------------- appeal
-APPEAL = [
-    ("세워도 되는지 미리 알려 준다", "목적지 부근 차선 규칙을 3 km 전부터 · 황색 점선은 5분까지, 실선은 정차할 수 없다"),
-    ("폰이 모르는 걸 차가 안다", "브레이크 · 기어 P · 승객석 문 신호로 ‘멈췄다, 내렸다’를 확정"),
-    ("주행 중 화면 전환 0회", "안내는 내비 위 한 줄 카드로 · 터치는 물을 때 ‘물어보기’ 한 번뿐"),   # 대표 11/15: 물어보기도 터치다 → "터치 0회" 금지
-    ("갈수록 내 차에 맞춰진다", "길가에 내린 자리를 기억해 다음 방문 때 먼저 알려 준다"),
+APPEAL = [   # 기획서 3장 F1~F5 (대표 11/15: "왜 다른가에서 기획서의 F1, F2 등을 더 이야기"). (번호, 이름, 하는 일, 쓰는 차량 신호, 보조 여부)
+    ("F1", "세워도 되는지 미리 알려 준다", "3 km·1 km 전에 “목적지 부근은 황색 점선으로 5분까지 정차할 수 있어요”", "내비 목적지·남은 거리", False),
+    ("F2", "멈췄다, 내렸다를 차가 확정한다", "100 m 안 브레이크 3초 → 정차 의도 · 기어 P → 도착 · 승객석 문 → 승하차, 내린 자리 기억", "브레이크 · 기어 · 문 신호", False),
+    ("F3", "‘물어보기’ 한 번으로 묻는다", "“정문 앞 세워도 돼?” → 한 문장으로 답 · 주행 중 화면 전환 0회", "차량 마이크 · 스피커", False),
+    ("F4", "기다리는 사람에게 마중 알림", "링크 한 번 보내 두면 차가 실제로 멈춘 순간을 알려 준다", "기어 P · 도착 이벤트", True),
+    ("F5", "도착해서 충전", "배터리가 낮으면 목적지에서 가장 가까운 충전기를 한 문장으로", "EV 배터리 잔량", True),
 ]
 
 
-def appeal(out, sec=13.0):
-    """오프닝 뒤 '왜 라스트마일인가' (11/15 대표: "처음에 왜 매력적인지 어필하는 부분"). 숫자는 기획서에 출처가 있는 것만."""
+def appeal(out, sec=17.0):
+    """오프닝 뒤 '왜 라스트마일인가' (11/15 대표: "처음에 왜 매력적인지 어필"). 숫자는 기획서에 출처가 있는 것만.
+    1막 단속 연 221만 건 → 2막 기획서 F1~F5 한 줄씩(하는 일 + 쓰는 차량 신호)."""
     p = writer(out, sec)
     f_big, f_cap, f_src = font(150, True), font(40, True), font(26)
-    f_h, f_t, f_d, f_n = font(52, True), font(40, True), font(28), font(30, True)
+    f_h, f_t, f_d, f_n, f_tag = font(50, True), font(36, True), font(26), font(28, True), font(22, True)
     n = int(sec * FPS)
     for i in range(n):
         t = i / FPS
@@ -157,32 +159,29 @@ def appeal(out, sec=13.0):
             s3 = "목적지 앞에서 ‘세워도 되나?’를 모른 채 세운 대가 · 황색 실선 앞 정차 과태료는 승용차 4만 원"; tw3 = dd.textlength(s3, font=f_src)
             dd.text((W / 2 - tw3 / 2, 680 + 10 * (1 - b)), s3, font=f_src, fill=SUB + (int(255 * b),))
         alpha_layer(im, hook, a1)
-        # 2막 (3.3초~): 다른 점 넷
+        # 2막 (3.3초~): F1~F5
         a2 = ease_out(prog(t, 3.3, 3.8)) * (1 - ease_in_out(prog(t, sec - 0.6, sec)))
         def cards(dd):
-            hs = "라스트마일이 다른 점"; tw = dd.textlength(hs, font=f_h)
-            dd.text((W / 2 - tw / 2, 150 - 16 * (1 - a2)), hs, font=f_h, fill=INK + (255,))
-            cw, ch, gx, gy = 780, 250, 40, 36; x0 = (W - 2 * cw - gx) / 2; y0 = 280
-            for k, (title, desc) in enumerate(APPEAL):
-                c = ease_out(prog(t, 3.7 + 0.45 * k, 4.3 + 0.45 * k))
+            hs = "라스트마일이 하는 일"; tw = dd.textlength(hs, font=f_h)
+            dd.text((W / 2 - tw / 2, 110 - 16 * (1 - a2)), hs, font=f_h, fill=INK + (255,))
+            rw, rh, gap = 1500, 132, 18; x0 = (W - rw) / 2; y0 = 210
+            for k, (fn, title, desc, sig, aux) in enumerate(APPEAL):
+                c = ease_out(prog(t, 3.8 + 0.9 * k, 4.4 + 0.9 * k))
                 if c <= 0: continue
-                cx = x0 + (k % 2) * (cw + gx); cy = y0 + (k // 2) * (ch + gy) + 24 * (1 - c); A = int(255 * c)
-                dd.rounded_rectangle([cx, cy, cx + cw, cy + ch], radius=28, fill=(255, 255, 255, A), outline=LINE + (A,), width=2)
-                col = GREEN if k % 2 == 0 else BLUE
-                dd.ellipse([cx + 40, cy + 44, cx + 96, cy + 100], fill=col + (A,))
-                ns = str(k + 1); nw = dd.textlength(ns, font=f_n); dd.text((cx + 68 - nw / 2, cy + 52), ns, font=f_n, fill=(255, 255, 255, A))
-                dd.text((cx + 124, cy + 46), title, font=f_t, fill=INK + (A,))
-                # 설명은 카드 폭에 맞춰 두 줄까지
-                words, lines, cur = desc.split(" "), [], ""
-                for w in words:
-                    trial = (cur + " " + w).strip()
-                    if dd.textlength(trial, font=f_d) <= cw - 164: cur = trial
-                    else: lines.append(cur); cur = w
-                lines.append(cur)
-                for li, l in enumerate(lines[:2]): dd.text((cx + 124, cy + 120 + 42 * li), l, font=f_d, fill=(68, 70, 78, A))
-            e = ease_out(prog(t, 9.5, 10.1))
+                cy = y0 + k * (rh + gap); cx = x0 + 40 * (1 - c); A = int(255 * c)
+                dd.rounded_rectangle([cx, cy, cx + rw, cy + rh], radius=26, fill=(255, 255, 255, A), outline=LINE + (A,), width=2)
+                col = (GREEN if k % 2 == 0 else BLUE) if not aux else (150, 156, 168)
+                dd.rounded_rectangle([cx + 30, cy + 36, cx + 110, cy + 96], radius=30, fill=col + (A,))
+                nw = dd.textlength(fn, font=f_n); dd.text((cx + 70 - nw / 2, cy + 47), fn, font=f_n, fill=(255, 255, 255, A))
+                dd.text((cx + 140, cy + 24), title + (" (보조)" if aux else ""), font=f_t, fill=INK + (A,))
+                dd.text((cx + 140, cy + 78), desc, font=f_d, fill=(68, 70, 78, A))
+                # 오른쪽 위: 쓰는 차량 신호 칩
+                sw = dd.textlength(sig, font=f_tag); sx = cx + rw - sw - 64
+                dd.rounded_rectangle([sx, cy + 26, sx + sw + 36, cy + 66], radius=20, fill=(237, 242, 250, A))
+                dd.text((sx + 18, cy + 33), sig, font=f_tag, fill=BLUE + (A,) if not aux else SUB + (A,))
+            e = ease_out(prog(t, 14.0, 14.6))
             es = "지금부터 Pleos Connect 에뮬레이터 실제 구동 화면"; ew = dd.textlength(es, font=f_src)
-            dd.text((W / 2 - ew / 2, 900 + 10 * (1 - e)), es, font=f_src, fill=SUB + (int(255 * e),))
+            dd.text((W / 2 - ew / 2, 990 + 10 * (1 - e)), es, font=f_src, fill=SUB + (int(255 * e),))
         alpha_layer(im, cards, a2)
         p.stdin.write(im.convert("RGB").tobytes())
     p.stdin.close(); p.wait()
